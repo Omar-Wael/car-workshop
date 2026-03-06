@@ -1,0 +1,572 @@
+<div class="sp-container" id="sparePartsFormTop">
+  <!-- ══ Toast ══ -->
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════
+       FORM CARD
+  ══════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل طلب الصرف" : "➕ إضافة طلب صرف جديد" }}</h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء التعديل
+        </button>
+      }
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <!-- ── القسم 1: بيانات الطلب ── -->
+      <div class="section-title">📋 بيانات الطلب</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>رقم الطلب <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="request_number"
+            [class.invalid]="
+              form.get('request_number')?.invalid &&
+              form.get('request_number')?.touched
+            "
+            placeholder="مثال: SP-2025-001"
+          />
+          @if (
+            form.get("request_number")?.invalid &&
+            form.get("request_number")?.touched
+          ) {
+            <span class="error-msg">رقم الطلب مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ الطلب</label>
+          <input type="date" formControlName="request_date" />
+        </div>
+
+        <div class="form-group">
+          <label>رقم لوحة السيارة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="vehicle_plate"
+            [options]="vehicleOptions()"
+            placeholder="اختر السيارة"
+            searchPlaceholder="ابحث برقم اللوحة..."
+            [invalid]="
+              !!(
+                form.get('vehicle_plate')?.invalid &&
+                form.get('vehicle_plate')?.touched
+              )
+            "
+            (selectionChange)="onVehiclePlateChange($any($event))"
+          />
+          @if (
+            form.get("vehicle_plate")?.invalid &&
+            form.get("vehicle_plate")?.touched
+          ) {
+            <span class="error-msg">رقم اللوحة مطلوب</span>
+          }
+        </div>
+
+        <!-- الإدارة: عرض تلقائي بناءً على السيارة -->
+        <div class="form-group">
+          <label>الإدارة</label>
+          <div class="readonly-field">
+            {{
+              _selectedDepartment() || "— يُملأ تلقائياً عند اختيار السيارة —"
+            }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>الحالة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="اختر الحالة"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>رقم طلب الشراء</label>
+          <input
+            type="text"
+            formControlName="purchase_request_number"
+            placeholder="مثال: PO-2025-001"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>قراءة العداد</label>
+          <input
+            type="number"
+            formControlName="odometer_reading"
+            min="0"
+            placeholder="اختياري"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>الفني / الفنيون</label>
+          <app-searchable-select
+            formControlName="technician_name"
+            [options]="technicianOptions()"
+            [multiple]="true"
+            placeholder="اختر الفني أو أكثر"
+            searchPlaceholder="ابحث باسم الفني..."
+          />
+        </div>
+      </div>
+
+      <!-- ── القسم 2: الأصناف ── -->
+      <div class="section-title">
+        📦 الأصناف المطلوبة
+        <button
+          type="button"
+          class="btn btn-success btn-sm section-btn"
+          (click)="addItem()"
+        >
+          ➕ إضافة صنف
+        </button>
+      </div>
+
+      <div class="items-list" formArrayName="items">
+        @for (
+          item of itemsArray.controls;
+          track trackByIndex($index);
+          let i = $index
+        ) {
+          <div class="item-card" [formGroupName]="i">
+            <div class="item-header">
+              <h4>📦 صنف {{ i + 1 }}</h4>
+              @if (itemsArray.length > 1) {
+                <button
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  (click)="removeItem(i)"
+                >
+                  🗑️ حذف
+                </button>
+              }
+            </div>
+
+            <div class="form-grid">
+              <!-- الكتالوج -->
+              <div class="form-group full-width">
+                <label
+                  >القطعة من الكتالوج
+                  <span class="hint"
+                    >(اختياري — يُملأ الاسم والوحدة تلقائياً)</span
+                  ></label
+                >
+                <app-searchable-select
+                  formControlName="catalog_id"
+                  [options]="catalogOptions()"
+                  placeholder="— اختر من الكتالوج أو اتركه فارغاً —"
+                  searchPlaceholder="ابحث باسم القطعة أو الكود أو Serial..."
+                  (selectionChange)="onCatalogSelect(i, $any($event))"
+                />
+              </div>
+
+              <!-- اسم الصنف -->
+              <div class="form-group">
+                <label>اسم الصنف <span class="required">*</span></label>
+                <input
+                  type="text"
+                  formControlName="name"
+                  [class.invalid]="
+                    item.get('name')?.invalid && item.get('name')?.touched
+                  "
+                  placeholder="اسم القطعة أو الصنف"
+                />
+                @if (item.get("name")?.invalid && item.get("name")?.touched) {
+                  <span class="error-msg">الاسم مطلوب</span>
+                }
+              </div>
+
+              <!-- الكمية -->
+              <div class="form-group">
+                <label>الكمية <span class="required">*</span></label>
+                <input
+                  type="number"
+                  formControlName="quantity"
+                  min="0"
+                  step="1"
+                  [class.invalid]="
+                    item.get('quantity')?.invalid &&
+                    item.get('quantity')?.touched
+                  "
+                />
+                @if (
+                  item.get("quantity")?.invalid && item.get("quantity")?.touched
+                ) {
+                  <span class="error-msg">الكمية مطلوبة</span>
+                }
+              </div>
+
+              <!-- الوحدة -->
+              <div class="form-group">
+                <label>الوحدة <span class="required">*</span></label>
+                <app-searchable-select
+                  formControlName="unit"
+                  [options]="unitOptions"
+                  placeholder="اختر الوحدة"
+                />
+              </div>
+
+              <!-- آخر تاريخ صرف -->
+              <div class="form-group">
+                <label>آخر تاريخ صرف</label>
+                <input type="date" formControlName="last_date" />
+              </div>
+
+              <!-- رقم القطعة -->
+              <div class="form-group">
+                <label>رقم القطعة</label>
+                <input
+                  type="text"
+                  formControlName="part_number"
+                  placeholder="اختياري"
+                />
+              </div>
+
+              <!-- Serial -->
+              <div class="form-group">
+                <label>رقم Serial</label>
+                <input
+                  type="text"
+                  formControlName="serial_number"
+                  placeholder="اختياري"
+                />
+              </div>
+            </div>
+
+            <!-- مع عينة + الحالة -->
+            <div class="item-footer">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="with_sample" />
+                <span>مع عينة</span>
+              </label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    formControlName="condition"
+                    value="جديد"
+                  />
+                  <span>جديد</span>
+                </label>
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    formControlName="condition"
+                    value="استيراد (مستعمل)"
+                  />
+                  <span>استيراد (مستعمل)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ── القسم 3: المرفقات ── -->
+      <div class="section-title">📸 الصور والمرفقات</div>
+      <div class="attachments-section">
+        <label class="file-upload-btn">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            (change)="onFileSelect($event)"
+            hidden
+          />
+          📁 إضافة صور
+        </label>
+
+        @if (currentAttachments.length) {
+          <div class="attachments-grid">
+            @for (
+              att of currentAttachments;
+              track trackByIndex($index);
+              let ai = $index
+            ) {
+              <div class="attachment-thumb">
+                <img
+                  [src]="att.data"
+                  [alt]="att.name"
+                  (click)="openZoom(att.data)"
+                />
+                <div class="attachment-name">{{ att.name }}</div>
+                <button
+                  type="button"
+                  class="attachment-remove"
+                  (click)="removeAttachment(ai)"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="no-attachments">لا توجد صور مرفقة</p>
+        }
+      </div>
+
+      <!-- ── Buttons ── -->
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ الطلب
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FILTERS + TABLE CARD
+  ══════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        قائمة طلبات الصرف
+        <span class="count-badge">{{ filteredSpareParts().length }}</span>
+      </h2>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث برقم الطلب، السيارة، الإدارة، الفني..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+      />
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-grid">
+      <app-searchable-select
+        [options]="platesInData()"
+        [value]="filterPlate()"
+        placeholder="كل السيارات"
+        (selectionChange)="filterPlate.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="departmentOptions()"
+        [value]="filterDepartment()"
+        placeholder="كل الإدارات"
+        (selectionChange)="filterDepartment.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="techniciansInData()"
+        [value]="filterTechnician()"
+        placeholder="كل الفنيين"
+        (selectionChange)="filterTechnician.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="statusOptions"
+        [value]="filterStatus()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterStatus.set($any($event))"
+      />
+
+      <div class="date-filter">
+        <label>من</label>
+        <input
+          type="date"
+          [value]="filterFrom()"
+          (change)="filterFrom.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="date-filter">
+        <label>إلى</label>
+        <input
+          type="date"
+          [value]="filterTo()"
+          (change)="filterTo.set($any($event.target).value)"
+        />
+      </div>
+
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح الفلاتر
+      </button>
+    </div>
+
+    <!-- Table -->
+    <app-data-table
+      [data]="filteredSpareParts()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="🔧"
+      emptyTitle="لا توجد طلبات صرف"
+      emptySubtitle="أضف طلباً جديداً باستخدام النموذج أعلاه"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     DETAILS MODAL
+══════════════════════════════════════════ -->
+@if (showDetailsModal() && selectedRecord()) {
+  @let sp = selectedRecord()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🔧 تفاصيل طلب الصرف — {{ sp.request_number }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- معلومات الطلب -->
+        <div class="detail-section">
+          <h3>📋 معلومات الطلب</h3>
+          <div class="details-grid-2">
+            <div class="detail-row">
+              <span>رقم الطلب</span><strong>{{ sp.request_number }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>السيارة</span><strong>{{ sp.vehicle_plate }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الإدارة</span><strong>{{ sp.department || "—" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الحالة</span>
+              <span class="badge" [class]="getStatusClass(sp.status)">{{
+                sp.status
+              }}</span>
+            </div>
+            <div class="detail-row">
+              <span>رقم طلب الشراء</span
+              ><strong>{{ sp.purchase_request_number || "—" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>قراءة العداد</span
+              ><strong>{{ sp.odometer_reading || "—" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>التاريخ</span
+              ><strong>{{ sp.created_at | date: "yyyy/MM/dd" }}</strong>
+            </div>
+            @if (sp.technician_name) {
+              <div class="detail-row full-width">
+                <span>الفني/الفنيون</span>
+                <div class="badges-wrap">
+                  @for (t of sp.technician_name.split(","); track t) {
+                    <span class="badge badge-tech">{{ t.trim() }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- الأصناف -->
+        <div class="detail-section">
+          <h3>📦 الأصناف المطلوبة ({{ sp.items?.length || 0 }})</h3>
+          @if (sp.items?.length) {
+            <div class="items-table-wrap">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>اسم الصنف</th>
+                    <th>الكمية</th>
+                    <th>الوحدة</th>
+                    <th>الحالة</th>
+                    <th>عينة</th>
+                    <th>آخر صرف</th>
+                    <th>رقم القطعة / Serial</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of sp.items; track trackByIndex($index)) {
+                    <tr>
+                      <td>{{ item.name }}</td>
+                      <td class="center">{{ item.quantity }}</td>
+                      <td class="center">{{ item.unit }}</td>
+                      <td class="center">{{ item.condition || "—" }}</td>
+                      <td class="center">
+                        {{ item.with_sample ? "✅" : "❌" }}
+                      </td>
+                      <td class="center">{{ item.last_date || "—" }}</td>
+                      <td class="muted-sm">{{ item.notes || "—" }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="muted">لا توجد أصناف</p>
+          }
+        </div>
+
+        <!-- المرفقات -->
+        @if (sp.attachments?.length) {
+          <div class="detail-section">
+            <h3>📸 المرفقات ({{ sp.attachments!.length }})</h3>
+            <div class="attachments-grid">
+              @for (img of sp.attachments; track trackByIndex($index)) {
+                @if (img.data?.startsWith("data:image")) {
+                  <div class="attachment-thumb" (click)="openZoom(img.data)">
+                    <img [src]="img.data" [alt]="img.name" />
+                    <div class="attachment-name">{{ img.name }}</div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(sp.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ Image zoom modal ══ -->
+@if (showImageModal()) {
+  <div
+    class="modal-backdrop modal-backdrop-dark"
+    (click)="showImageModal.set(false)"
+  >
+    <div class="zoom-modal" (click)="$event.stopPropagation()">
+      <button
+        class="modal-close zoom-close"
+        (click)="showImageModal.set(false)"
+      >
+        ✕
+      </button>
+      <img [src]="zoomedImage()" alt="صورة مكبّرة" class="zoom-img" />
+    </div>
+  </div>
+}

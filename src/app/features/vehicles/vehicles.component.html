@@ -1,0 +1,651 @@
+<div class="vehicles-container" id="vehicleFormTop">
+  <!-- ═══════════════════════════════════════════
+       Toast Notification
+  ═══════════════════════════════════════════ -->
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════
+       FORM CARD
+  ═══════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل السيارة" : "➕ إضافة سيارة جديدة" }}</h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء التعديل
+        </button>
+      }
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <!-- القسم 1 — البيانات الأساسية -->
+      <div class="section-title">📋 البيانات الأساسية</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>رقم اللوحة <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="plate_number"
+            [class.invalid]="
+              form.get('plate_number')?.invalid &&
+              form.get('plate_number')?.touched
+            "
+          />
+          @if (
+            form.get("plate_number")?.invalid &&
+            form.get("plate_number")?.touched
+          ) {
+            <span class="error-msg">رقم اللوحة مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>النوع <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="type"
+            [options]="typeSelectOptions()"
+            placeholder="اختر أو اكتب النوع"
+            [invalid]="
+              !!(form.get('type')?.invalid && form.get('type')?.touched)
+            "
+          />
+          @if (form.get("type")?.invalid && form.get("type")?.touched) {
+            <span class="error-msg">النوع مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>الماركة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="brand"
+            [options]="brandSelectOptions()"
+            placeholder="اختر أو اكتب الماركة"
+            [invalid]="
+              !!(form.get('brand')?.invalid && form.get('brand')?.touched)
+            "
+          />
+          @if (form.get("brand")?.invalid && form.get("brand")?.touched) {
+            <span class="error-msg">الماركة مطلوبة</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>الموديل <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="model"
+            [options]="modelSelectOptions()"
+            placeholder="اختر أو اكتب الموديل"
+            [invalid]="
+              !!(form.get('model')?.invalid && form.get('model')?.touched)
+            "
+          />
+          @if (form.get("model")?.invalid && form.get("model")?.touched) {
+            <span class="error-msg">الموديل مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>سنة الصنع <span class="required">*</span></label>
+          <input
+            type="number"
+            formControlName="year"
+            min="1900"
+            max="2030"
+            [class.invalid]="
+              form.get('year')?.invalid && form.get('year')?.touched
+            "
+          />
+        </div>
+
+        <div class="form-group">
+          <label>نوع الوقود <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="fuel_type"
+            [options]="fuelSelectOptions()"
+            placeholder="اختر نوع الوقود"
+            [invalid]="
+              !!(
+                form.get('fuel_type')?.invalid && form.get('fuel_type')?.touched
+              )
+            "
+          />
+          @if (
+            form.get("fuel_type")?.invalid && form.get("fuel_type")?.touched
+          ) {
+            <span class="error-msg">نوع الوقود مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>الإدارة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="department"
+            [options]="departmentSelectOptions()"
+            placeholder="اختر الإدارة"
+            [invalid]="
+              !!(
+                form.get('department')?.invalid &&
+                form.get('department')?.touched
+              )
+            "
+          />
+          @if (
+            form.get("department")?.invalid && form.get("department")?.touched
+          ) {
+            <span class="error-msg">الإدارة مطلوبة</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>نوع العداد <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="odometer_type"
+            [options]="odometerSelectOptions"
+            placeholder="اختر نوع العداد"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>حالة السيارة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="status"
+            [options]="statusSelectOptions()"
+            placeholder="اختر الحالة"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>رقم الشاسيه</label>
+          <input type="text" formControlName="chassis_number" />
+        </div>
+
+        <div class="form-group">
+          <label>رقم الموتور</label>
+          <input type="text" formControlName="engine_number" />
+        </div>
+      </div>
+
+      <!-- القسم 2 — المحرك -->
+      <div class="section-title">🔧 المحرك</div>
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>اختر المحرك من الكتالوج</label>
+          <app-searchable-select
+            formControlName="engine_id"
+            [options]="engineSelectOptions()"
+            placeholder="— لم يُحدد محرك —"
+            searchPlaceholder="ابحث بكود أو اسم المحرك..."
+          />
+          <small
+            >اختر محركاً مسجلاً في كتالوج المحركات — أو اتركه فارغاً إذا لم تكن
+            البيانات متوفرة بعد</small
+          >
+        </div>
+      </div>
+
+      <!-- القسم 3 — الزيوت -->
+      <div class="section-title">🛢️ الزيوت</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>كمية زيت المحرك (لتر)</label>
+          <input
+            type="number"
+            formControlName="engine_oil"
+            step="0.1"
+            min="0"
+          />
+        </div>
+        <div class="form-group">
+          <label>نوع زيت المحرك</label>
+          <input
+            type="text"
+            formControlName="engine_oil_type"
+            placeholder="مثال: 5W-30"
+          />
+        </div>
+        <div class="form-group">
+          <label>كمية زيت الفتيس (لتر)</label>
+          <input
+            type="number"
+            formControlName="transmission_oil"
+            step="0.1"
+            min="0"
+          />
+        </div>
+        <div class="form-group">
+          <label>نوع زيت الفتيس</label>
+          <input
+            type="text"
+            formControlName="transmission_oil_type"
+            placeholder="مثال: ATF Dexron"
+          />
+        </div>
+      </div>
+
+      <!-- القسم 4 — فترات الصيانة -->
+      <div class="section-title">
+        🔄 فترات الصيانة الدورية
+        <span class="section-subtitle">— بال{{ intervalUnit }}</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>تغيير الزيت كل ({{ intervalUnit }})</label>
+          <input
+            type="number"
+            formControlName="oil_change_interval"
+            min="0"
+            step="500"
+            placeholder="مثال: 5000"
+          />
+        </div>
+        <div class="form-group">
+          <label>تغيير فلتر الزيت كل ({{ intervalUnit }})</label>
+          <input
+            type="number"
+            formControlName="oil_filter_interval"
+            min="0"
+            step="500"
+            placeholder="مثال: 5000"
+          />
+        </div>
+        <div class="form-group">
+          <label>تغيير فلتر الوقود كل ({{ intervalUnit }})</label>
+          <input
+            type="number"
+            formControlName="fuel_filter_interval"
+            min="0"
+            step="1000"
+            placeholder="مثال: 20000"
+          />
+        </div>
+        <div class="form-group">
+          <label>تغيير فلتر الهواء كل ({{ intervalUnit }})</label>
+          <input
+            type="number"
+            formControlName="air_filter_interval"
+            min="0"
+            step="1000"
+            placeholder="مثال: 15000"
+          />
+        </div>
+      </div>
+
+      <!-- القسم 5 — ملاحظات -->
+      <div class="section-title">📝 ملاحظات</div>
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <textarea
+            formControlName="notes"
+            rows="3"
+            placeholder="أي ملاحظات إضافية عن السيارة..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ السيارة
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       FILTERS + TABLE CARD
+  ═══════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        قائمة السيارات
+        <span class="count-badge">{{ filteredVehicles().length }}</span>
+      </h2>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث برقم اللوحة، الماركة، الإدارة..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+      />
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-grid">
+      <app-searchable-select
+        [options]="yearSelectOptions()"
+        [value]="filterYear()"
+        placeholder="كل السنوات"
+        (selectionChange)="filterYear.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="brandSelectOptions()"
+        [value]="filterBrand()"
+        placeholder="كل الماركات"
+        (selectionChange)="filterBrand.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="typeSelectOptions()"
+        [value]="filterType()"
+        placeholder="كل الأنواع"
+        (selectionChange)="filterType.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="departmentSelectOptions()"
+        [value]="filterDepartment()"
+        placeholder="كل الإدارات"
+        (selectionChange)="filterDepartment.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="fuelSelectOptions()"
+        [value]="filterFuel()"
+        placeholder="كل أنواع الوقود"
+        (selectionChange)="filterFuel.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="statusSelectOptions()"
+        [value]="filterStatus()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterStatus.set($any($event))"
+      />
+
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح الفلاتر
+      </button>
+    </div>
+
+    <!-- Table -->
+    <app-data-table
+      [data]="filteredVehicles()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="🚗"
+      emptyTitle="لا توجد سيارات مسجلة"
+      emptySubtitle="أضف سيارة جديدة باستخدام النموذج أعلاه"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DETAILS MODAL
+═══════════════════════════════════════════ -->
+@if (showDetailsModal() && selectedVehicle()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🚗 تفاصيل السيارة — {{ selectedVehicle()!.plate_number }}</h2>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="details-grid">
+          <!-- البيانات الأساسية -->
+          <div class="detail-section">
+            <h3>📋 البيانات الأساسية</h3>
+            <div class="detail-row">
+              <span>رقم اللوحة</span
+              ><strong>{{ selectedVehicle()!.plate_number }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>النوع</span
+              ><strong>{{ selectedVehicle()!.type || "غير محدد" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الماركة</span
+              ><strong>{{ selectedVehicle()!.brand || "غير محدد" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الموديل</span
+              ><strong>{{ selectedVehicle()!.model || "غير محدد" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>سنة الصنع</span
+              ><strong>{{ selectedVehicle()!.year || "غير محدد" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>رقم الشاسيه</span
+              ><strong>{{
+                selectedVehicle()!.chassis_number || "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>رقم الموتور</span
+              ><strong>{{
+                selectedVehicle()!.engine_number || "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>نوع الوقود</span
+              ><strong>{{ selectedVehicle()!.fuel_type || "غير محدد" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>نوع العداد</span>
+              <strong>{{
+                selectedVehicle()!.odometer_type === "hours"
+                  ? "ساعات تشغيل"
+                  : "كيلومترات"
+              }}</strong>
+            </div>
+          </div>
+
+          <!-- المحرك -->
+          <div class="detail-section">
+            <h3>🔧 المحرك</h3>
+            @if (selectedEngine()) {
+              <div class="detail-row">
+                <span>الكود</span
+                ><strong>{{ selectedEngine()!.engine_code }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>الاسم</span
+                ><strong>{{ selectedEngine()!.engine_name }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>الشركة</span
+                ><strong>{{ selectedEngine()!.brand || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>السعة</span
+                ><strong>{{
+                  selectedEngine()!.displacement_l
+                    ? selectedEngine()!.displacement_l + " L"
+                    : "—"
+                }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>الأسطوانات</span
+                ><strong>{{ selectedEngine()!.cylinders || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>الكامة</span
+                ><strong>{{ selectedEngine()!.cam_type || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>التوقيت</span
+                ><strong>{{ selectedEngine()!.timing_system || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>نظام الوقود</span
+                ><strong>{{ selectedEngine()!.fuel_system || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>القوة</span
+                ><strong>{{
+                  selectedEngine()!.power_hp
+                    ? selectedEngine()!.power_hp + " hp"
+                    : "—"
+                }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>العزم</span
+                ><strong>{{
+                  selectedEngine()!.torque_nm
+                    ? selectedEngine()!.torque_nm + " Nm"
+                    : "—"
+                }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>نسبة الضغط</span
+                ><strong>{{
+                  selectedEngine()!.compression_ratio || "—"
+                }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>ترتيب الاشتعال</span
+                ><strong>{{ selectedEngine()!.firing_order || "—" }}</strong>
+              </div>
+              <div class="detail-row">
+                <span>سعة الزيت</span
+                ><strong>{{
+                  selectedEngine()!.oil_capacity_l
+                    ? selectedEngine()!.oil_capacity_l + " L"
+                    : "—"
+                }}</strong>
+              </div>
+            } @else {
+              <p class="muted">لم يُحدد محرك لهذه السيارة</p>
+            }
+          </div>
+
+          <!-- الزيوت -->
+          <div class="detail-section">
+            <h3>🛢️ الزيوت</h3>
+            <div class="detail-row">
+              <span>زيت المحرك</span
+              ><strong>{{
+                selectedVehicle()!.engine_oil
+                  ? selectedVehicle()!.engine_oil + " لتر"
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>نوع زيت المحرك</span
+              ><strong>{{
+                selectedVehicle()!.engine_oil_type || "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>زيت الفتيس</span
+              ><strong>{{
+                selectedVehicle()!.transmission_oil
+                  ? selectedVehicle()!.transmission_oil + " لتر"
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>نوع زيت الفتيس</span
+              ><strong>{{
+                selectedVehicle()!.transmission_oil_type || "غير محدد"
+              }}</strong>
+            </div>
+          </div>
+
+          <!-- فترات الصيانة -->
+          <div class="detail-section">
+            <h3>🔄 فترات الصيانة الدورية</h3>
+            @let unit =
+              selectedVehicle()!.odometer_type === "hours" ? "ساعة" : "كم";
+            <div class="detail-row">
+              <span>تغيير الزيت كل</span
+              ><strong>{{
+                selectedVehicle()!.oil_change_interval
+                  ? selectedVehicle()!.oil_change_interval + " " + unit
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>تغيير فلتر الزيت كل</span
+              ><strong>{{
+                selectedVehicle()!.oil_filter_interval
+                  ? selectedVehicle()!.oil_filter_interval + " " + unit
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>تغيير فلتر الوقود كل</span
+              ><strong>{{
+                selectedVehicle()!.fuel_filter_interval
+                  ? selectedVehicle()!.fuel_filter_interval + " " + unit
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>تغيير فلتر الهواء كل</span
+              ><strong>{{
+                selectedVehicle()!.air_filter_interval
+                  ? selectedVehicle()!.air_filter_interval + " " + unit
+                  : "غير محدد"
+              }}</strong>
+            </div>
+          </div>
+
+          <!-- الإدارة والحالة -->
+          <div class="detail-section">
+            <h3>🏢 الإدارة والحالة</h3>
+            <div class="detail-row">
+              <span>الإدارة</span
+              ><strong>{{
+                selectedVehicle()!.department || "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الحالة</span>
+              <span
+                class="badge"
+                [ngClass]="getStatusClass(selectedVehicle()!.status)"
+                >{{ selectedVehicle()!.status }}</span
+              >
+            </div>
+            <div class="detail-row">
+              <span>تاريخ الإضافة</span
+              ><strong>{{
+                selectedVehicle()!.created_at | date: "yyyy/MM/dd"
+              }}</strong>
+            </div>
+          </div>
+
+          <!-- ملاحظات -->
+          @if (selectedVehicle()!.notes) {
+            <div class="detail-section full-width">
+              <h3>📝 ملاحظات</h3>
+              <p class="notes-text">{{ selectedVehicle()!.notes }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(selectedVehicle()!.id!); closeModal()"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="closeModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+}

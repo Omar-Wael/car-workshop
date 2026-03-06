@@ -1,0 +1,120 @@
+<div
+  class="ss-wrapper"
+  [class.ss-open]="isOpen()"
+  [class.ss-disabled]="disabled"
+  [class.ss-invalid]="invalid"
+>
+  <!-- ── Trigger ── -->
+  <div
+    class="ss-trigger"
+    (click)="toggle()"
+    [attr.tabindex]="disabled ? -1 : 0"
+    (keydown.enter)="toggle()"
+    (keydown.space)="toggle(); $event.preventDefault()"
+  >
+    <div class="ss-display">
+      <!-- Multi: show tags -->
+      @if (multiple && multiValues().length) {
+        <div class="ss-tags">
+          @for (val of multiValues(); track val) {
+            <span class="ss-tag">
+              {{ options | ssLabel: val }}
+              <button
+                type="button"
+                class="ss-tag-remove"
+                (click)="removeTag(val, $event)"
+                tabindex="-1"
+              >
+                ×
+              </button>
+            </span>
+          }
+        </div>
+      } @else {
+        <!-- Single or empty multi -->
+        <span [class.ss-placeholder]="!hasValue()">
+          {{ displayLabel() }}
+        </span>
+      }
+    </div>
+
+    <div class="ss-actions">
+      @if (hasValue() && !disabled) {
+        <button
+          type="button"
+          class="ss-clear"
+          (click)="clearAll($event)"
+          tabindex="-1"
+          title="مسح"
+        >
+          ✕
+        </button>
+        <span class="ss-divider"></span>
+      }
+      <span class="ss-arrow" [class.ss-arrow-up]="isOpen()">▾</span>
+    </div>
+  </div>
+
+  <!-- ── Dropdown ── -->
+  @if (isOpen()) {
+    <div class="ss-dropdown" [style.max-height]="maxHeight">
+      <!-- Search input -->
+      <div class="ss-search-wrap">
+        <input
+          class="search-input"
+          type="text"
+          [placeholder]="searchPlaceholder"
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+          (click)="$event.stopPropagation()"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Options list -->
+      <div class="ss-list">
+        @if (!filteredOptions().length) {
+          <div class="ss-empty">لا توجد نتائج</div>
+        }
+
+        @for (opt of filteredOptions(); track opt.value) {
+          <div
+            class="ss-option"
+            [class.ss-selected]="isSelected(opt.value)"
+            (click)="selectOption(opt)"
+          >
+            @if (multiple) {
+              <span
+                class="ss-checkbox"
+                [class.ss-checked]="isSelected(opt.value)"
+              >
+                @if (isSelected(opt.value)) {
+                  ✓
+                }
+              </span>
+            }
+            <div class="ss-option-text">
+              <span class="ss-option-label">{{ opt.label }}</span>
+              @if (opt.sublabel) {
+                <span class="ss-option-sublabel">{{ opt.sublabel }}</span>
+              }
+            </div>
+            @if (!multiple && isSelected(opt.value)) {
+              <span class="ss-check-icon">✓</span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Multi footer -->
+      @if (multiple && multiValues().length) {
+        <div class="ss-footer">
+          <span>{{ multiValues().length }} محدد</span>
+          <button type="button" class="ss-clear-all" (click)="clearAll($event)">
+            مسح الكل
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

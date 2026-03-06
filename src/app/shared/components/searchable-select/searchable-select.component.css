@@ -1,0 +1,323 @@
+/* ═══════════════════════════════════════
+   Searchable Select Component
+═══════════════════════════════════════ */
+
+:host {
+  display: block;
+  position: relative;
+}
+
+/* ── Wrapper ── */
+.ss-wrapper {
+  position: relative;
+  font-family: "Cairo", sans-serif;
+  direction: rtl;
+  user-select: none;
+}
+
+/* ── Trigger button ── */
+.ss-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 38px;
+  padding: 0.4rem 0.75rem;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  outline: none;
+}
+
+.ss-trigger:focus,
+.ss-open .ss-trigger {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.ss-disabled .ss-trigger {
+  background: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.ss-invalid .ss-trigger {
+  border-color: #ef4444;
+}
+
+.ss-invalid .ss-trigger:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* ── Display area ── */
+.ss-display {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.ss-placeholder {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* ── Tags (multi-select) ── */
+.ss-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.ss-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 5px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ss-tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3b82f6;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.1s;
+}
+
+.ss-tag-remove:hover {
+  color: #1d4ed8;
+}
+
+/* ── Actions (clear + arrow) ── */
+.ss-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.ss-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+
+.ss-clear:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.ss-divider {
+  width: 1px;
+  height: 16px;
+  background: #d1d5db;
+}
+
+.ss-arrow {
+  color: #6b7280;
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+
+.ss-arrow-up {
+  transform: rotate(180deg);
+}
+
+/* ── Dropdown panel ── */
+.ss-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+  z-index: 9999;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: ssDropIn 0.12s ease;
+}
+
+@keyframes ssDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Search input ── */
+.ss-search-wrap {
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.4rem 0.7rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 0.84rem;
+  font-family: "Cairo", sans-serif;
+  direction: rtl;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus {
+  border-color: #2563eb;
+}
+
+/* ── Options list ── */
+.ss-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.35rem 0;
+}
+
+.ss-option {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: background 0.1s;
+}
+
+.ss-option:hover {
+  background: #f0f7ff;
+}
+
+.ss-option.ss-selected {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* ── Checkbox for multi ── */
+.ss-checkbox {
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #fff;
+  background: #fff;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.ss-checked {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* ── Option text ── */
+.ss-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.ss-option-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ss-option-sublabel {
+  font-size: 0.73rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Single select checkmark */
+.ss-check-icon {
+  color: #2563eb;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-right: auto;
+}
+
+/* ── Empty state ── */
+.ss-empty {
+  padding: 1.25rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* ── Footer (multi) ── */
+.ss-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.875rem;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.ss-clear-all {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-family: "Cairo", sans-serif;
+  padding: 0;
+  font-weight: 600;
+}
+
+.ss-clear-all:hover {
+  color: #b91c1c;
+}

@@ -1,0 +1,191 @@
+<div class="dt-wrapper">
+  <!-- ══ Loading overlay ══ -->
+  @if (loading) {
+    <div class="dt-loading">
+      <div class="dt-spinner"></div>
+      <span>جارٍ التحميل...</span>
+    </div>
+  }
+
+  <!-- ══ Table (or empty state) ══ -->
+  @if (!loading) {
+    @if (!data.length) {
+      <!-- Empty state -->
+      <div class="dt-empty">
+        <div class="dt-empty-icon">{{ emptyIcon }}</div>
+        <h3 class="dt-empty-title">{{ emptyTitle }}</h3>
+        @if (emptySubtitle) {
+          <p class="dt-empty-sub">{{ emptySubtitle }}</p>
+        }
+      </div>
+    } @else {
+      <!-- Table scroll wrapper -->
+      <div class="dt-scroll">
+        <table class="dt-table">
+          <!-- ── Head ── -->
+          <thead>
+            <tr>
+              @if (showIndex) {
+                <th class="dt-th dt-th-index">#</th>
+              }
+              @for (col of columns; track col.key) {
+                <th
+                  class="dt-th"
+                  [class.dt-th-sortable]="col.sortable"
+                  [class.dt-th-active]="isSortActive(col.key)"
+                  [style.width]="col.width || 'auto'"
+                  [style.text-align]="col.align || 'right'"
+                  (click)="col.sortable && toggleSort(col.key)"
+                >
+                  <span class="dt-th-content">
+                    {{ col.label }}
+                    @if (col.sortable) {
+                      <span
+                        class="dt-sort-icon"
+                        [class.dt-sort-active]="isSortActive(col.key)"
+                      >
+                        {{ sortIcon(col.key) }}
+                      </span>
+                    }
+                  </span>
+                </th>
+              }
+              @if (actions.length) {
+                <th
+                  class="dt-th dt-th-actions"
+                  [class.dt-sticky-actions]="stickyActions"
+                >
+                  الإجراءات
+                </th>
+              }
+            </tr>
+          </thead>
+
+          <!-- ── Body ── -->
+          <tbody>
+            @for (
+              row of paginatedData();
+              track trackByIndex($index);
+              let i = $index
+            ) {
+              <tr
+                class="dt-row"
+                [class]="getRowClass(row)"
+                (click)="rowClick.emit(row)"
+              >
+                @if (showIndex) {
+                  <td class="dt-td dt-td-index">
+                    {{ startIndex() + i }}
+                  </td>
+                }
+
+                @for (col of columns; track col.key) {
+                  <td
+                    class="dt-td"
+                    [class]="getCellClass(row, col)"
+                    [style.text-align]="col.align || 'right'"
+                  >
+                    @if (col.renderHtml) {
+                      <span [innerHTML]="getCellHtml(row, col)"></span>
+                    } @else {
+                      {{ getCellValue(row, col) }}
+                    }
+                  </td>
+                }
+
+                @if (actions.length) {
+                  <td
+                    class="dt-td dt-td-actions"
+                    [class.dt-sticky-actions]="stickyActions"
+                  >
+                    <div class="dt-actions">
+                      @for (action of actions; track action.id) {
+                        @if (!isActionHidden(action, row)) {
+                          <button
+                            type="button"
+                            class="dt-action-btn"
+                            [class]="
+                              'dt-action-btn dt-action-' +
+                              (action.color || 'view')
+                            "
+                            [disabled]="isActionDisabled(action, row)"
+                            [title]="action.label"
+                            (click)="onAction(action, row, $event)"
+                          >
+                            {{ action.icon }}
+                          </button>
+                        }
+                      }
+                    </div>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ══ Pagination bar ══ -->
+      <div class="dt-pagination">
+        <!-- Left: info + page size -->
+        <div class="dt-pagination-info">
+          <span class="dt-count">
+            {{ startIndex() }}–{{ endIndex() }} من {{ totalItems() }} عنصر
+          </span>
+          <div class="dt-page-size">
+            <label>عرض</label>
+            <select
+              class="dt-page-size-select"
+              (change)="onPageSizeChange($event)"
+            >
+              @for (opt of pageSizeOptions; track opt) {
+                <option [value]="opt" [selected]="opt === pageSize()">
+                  {{ opt }}
+                </option>
+              }
+            </select>
+            <label>في الصفحة</label>
+          </div>
+        </div>
+
+        <!-- Right: page buttons -->
+        <div class="dt-page-btns">
+          <!-- Prev -->
+          <button
+            class="dt-page-btn dt-page-nav"
+            [disabled]="currentPage() === 1"
+            (click)="prevPage()"
+            title="الصفحة السابقة"
+          >
+            ➜
+          </button>
+
+          <!-- Page numbers -->
+          @for (page of pageNumbers(); track trackByIndex($index)) {
+            @if (isEllipsis(page)) {
+              <span class="dt-page-ellipsis">…</span>
+            } @else {
+              <button
+                class="dt-page-btn"
+                [class.dt-page-active]="page === currentPage()"
+                (click)="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+            }
+          }
+
+          <!-- Next -->
+          <button
+            class="dt-page-btn dt-page-nav rotate-180"
+            [disabled]="currentPage() === totalPages()"
+            (click)="nextPage()"
+            title="الصفحة التالية"
+          >
+            ➜
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>
