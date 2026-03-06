@@ -1,1 +1,85 @@
-node_modules
+# =========================
+# Node
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Angular
+# =========================
+.angular/
+dist/
+tmp/
+out-tsc/
+coverage/
+
+# =========================
+# Build output
+# =========================
+build/
+*.tsbuildinfo
+
+# =========================
+# Environment files
+# =========================
+src/environments/environment.local.ts
+src/environments/environment.prod.local.ts
+
+# =========================
+# Logs
+# =========================
+logs
+*.log
+
+# =========================
+# Dependency directories
+# =========================
+jspm_packages/
+
+# =========================
+# IDEs and Editors
+# =========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# =========================
+# MacOS
+# =========================
+.DS_Store
+
+# =========================
+# Windows
+# =========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+.cache/
+
+# =========================
+# Supabase local (if used)
+# =========================
+.supabase/
+
+# =========================
+# Testing
+# =========================
+/coverage/
+
+# =========================
+# Misc
+# =========================
+*.tgz
+*.bak
