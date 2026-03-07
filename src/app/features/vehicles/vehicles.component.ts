@@ -7,11 +7,17 @@ import {
   FormGroup,
   Validators,
 } from "@angular/forms";
-import { SupabaseService } from "../../core/services/supabase.service";
-import { Engine, Vehicle, SelectOption } from "src/app/core/models";
-import { SearchableSelectComponent } from "src/app/shared/components/searchable-select/searchable-select.component";
-import { DataTableComponent } from "src/app/shared/components/data-table/data-table.component";
-import { TableColumn, TableAction, ActionEvent } from "src/app/core/models";
+import { SearchableSelectComponent } from "../../shared/components/searchable-select/searchable-select.component";
+import { DataTableComponent } from "../../shared/components/data-table/data-table.component";
+import {
+  Vehicle,
+  Engine,
+  SelectOption,
+  TableColumn,
+  TableAction,
+  ActionEvent,
+} from "src/app/core/models/index";
+import { VehicleService } from "src/app/core/services/vehicle.service";
 
 @Component({
   selector: "app-vehicles",
@@ -26,18 +32,33 @@ import { TableColumn, TableAction, ActionEvent } from "src/app/core/models";
   styleUrl: "./vehicles.component.css",
 })
 export class VehiclesComponent implements OnInit {
-  // ── State ──
-  vehicles = signal<Vehicle[]>([]);
-  engines = signal<Engine[]>([]);
-  departments = signal<string[]>([]);
-  loading = signal(false);
-  saving = signal(false);
+  // ── Expose service signals directly to template ──
+  vehicles = this.svc.vehicles;
+  engines = this.svc.engines;
+  departments = this.svc.departments;
+  loading = this.svc.loading;
+  saving = this.svc.saving;
+
+  // ── Component-local state ──
   editingId = signal<string | null>(null);
 
-  // ── Modal ──
   showDetailsModal = signal(false);
   selectedVehicle = signal<Vehicle | null>(null);
   selectedEngine = signal<Engine | null>(null);
+
+  // ── Import state ──
+  importLoading = signal(false);
+  importResult = signal<{
+    imported: number;
+    errors: string[];
+    skipped: number;
+  } | null>(null);
+
+  // ── Toast ──
+  toast = signal<{
+    message: string;
+    type: "success" | "error" | "warning";
+  } | null>(null);
 
   // ── Filters ──
   filterYear = signal("");
@@ -48,29 +69,29 @@ export class VehiclesComponent implements OnInit {
   filterStatus = signal("");
   searchTerm = signal("");
 
-  // ── Toast ──
-  toast = signal<{
-    message: string;
-    type: "success" | "error" | "warning";
-  } | null>(null);
+  // ── Static options ──
+  readonly fuelTypes = ["بنزين", "ديزل", "غاز طبيعي", "كهرباء", "هجين"];
+  readonly statusOptions = [
+    { value: "نشطة", label: "✅ نشطة" },
+    { value: "متوقفة للإصلاح", label: "🔧 متوقفة للإصلاح" },
+    { value: "عمرة", label: "🔨 عمرة" },
+    { value: "متوقفة للترخيص", label: "📄 متوقفة للترخيص" },
+    { value: "متوقفة للتكهين", label: "⛔ متوقفة للتكهين" },
+    { value: "في الانتظار", label: "⏳ في الانتظار" },
+  ];
 
-  // ── Dropdown options (dynamic from DB) ──
-  typeOptions = signal<string[]>([]);
-  brandOptions = signal<string[]>([]);
-  modelOptions = signal<string[]>([]);
-
-  // ── SelectOption arrays for searchable-select ──
+  // ── Computed SelectOption arrays ──
   typeSelectOptions = computed<SelectOption[]>(() =>
-    this.typeOptions().map((v) => ({ value: v, label: v })),
+    this.svc.typeOptions().map((v: string) => ({ value: v, label: v })),
   );
   brandSelectOptions = computed<SelectOption[]>(() =>
-    this.brandOptions().map((v) => ({ value: v, label: v })),
+    this.svc.brandOptions().map((v: string) => ({ value: v, label: v })),
   );
   modelSelectOptions = computed<SelectOption[]>(() =>
-    this.modelOptions().map((v) => ({ value: v, label: v })),
+    this.svc.modelOptions().map((v: string) => ({ value: v, label: v })),
   );
   departmentSelectOptions = computed<SelectOption[]>(() =>
-    this.departments().map((v) => ({ value: v, label: v })),
+    this.departments().map((v: string) => ({ value: v, label: v })),
   );
   engineSelectOptions = computed<SelectOption[]>(() =>
     this.engines().map((e: any) => ({
@@ -82,28 +103,71 @@ export class VehiclesComponent implements OnInit {
     })),
   );
   fuelSelectOptions = computed<SelectOption[]>(() =>
-    this.fuelTypes.map((f) => ({ value: f, label: f })),
+    this.fuelTypes.map((f: string) => ({ value: f, label: f })),
   );
   statusSelectOptions = computed<SelectOption[]>(() =>
-    this.statusOptions.map((s) => ({ value: s.value, label: s.label })),
+    this.statusOptions.map((s: SelectOption) => ({
+      value: s.value,
+      label: s.label,
+    })),
   );
   odometerSelectOptions: SelectOption[] = [
     { value: "kilometers", label: "كيلومترات" },
     { value: "hours", label: "ساعات تشغيل" },
   ];
   yearSelectOptions = computed<SelectOption[]>(() =>
-    this.uniqueYears().map((y) => ({ value: String(y), label: String(y) })),
+    this.uniqueYears().map((y: any) => ({
+      value: String(y),
+      label: String(y),
+    })),
   );
 
-  form: FormGroup;
+  // ── Computed filtered list ──
+  filteredVehicles = computed(() => {
+    let list = this.vehicles();
+    const term = this.searchTerm().toLowerCase();
+    if (term)
+      list = list.filter(
+        (v: Vehicle) =>
+          v.plate_number.toLowerCase().includes(term) ||
+          (v.brand || "").toLowerCase().includes(term) ||
+          (v.model || "").toLowerCase().includes(term) ||
+          (v.department || "").toLowerCase().includes(term) ||
+          (v.type || "").toLowerCase().includes(term),
+      );
+    if (this.filterYear())
+      list = list.filter((v: Vehicle) => String(v.year) === this.filterYear());
+    if (this.filterBrand())
+      list = list.filter((v: Vehicle) => v.brand === this.filterBrand());
+    if (this.filterType())
+      list = list.filter((v: Vehicle) => v.type === this.filterType());
+    if (this.filterDepartment())
+      list = list.filter(
+        (v: Vehicle) => v.department === this.filterDepartment(),
+      );
+    if (this.filterFuel())
+      list = list.filter((v: Vehicle) => v.fuel_type === this.filterFuel());
+    if (this.filterStatus())
+      list = list.filter((v: Vehicle) => v.status === this.filterStatus());
+    return list;
+  });
 
-  // ── Table definition ──
+  uniqueYears = computed(() =>
+    [
+      ...new Set(
+        this.vehicles()
+          .map((v: Vehicle) => v.year)
+          .filter(Boolean),
+      ),
+    ].sort((a, b) => ((b as number) ?? 0) - ((a as number) ?? 0)),
+  );
+
+  // ── Table ──
   tableColumns: TableColumn[] = [
     {
       key: "plate_number",
       label: "رقم اللوحة",
       sortable: false,
-      render: (row) => row.plate_number,
       cellClass: () => "cell-plate",
     },
     { key: "type", label: "النوع", sortable: false },
@@ -121,10 +185,8 @@ export class VehiclesComponent implements OnInit {
       key: "status",
       label: "الحالة",
       sortable: false,
-      renderHtml: (row) => {
-        const cls = this.getStatusClass(row.status);
-        return `<span class="badge ${cls}">${row.status || "—"}</span>`;
-      },
+      renderHtml: (row) =>
+        `<span class="badge ${this.getStatusClass(row.status)}">${row.status || "—"}</span>`,
     },
     {
       key: "created_at",
@@ -143,64 +205,11 @@ export class VehiclesComponent implements OnInit {
     { id: "delete", label: "حذف", icon: "🗑️", color: "delete" },
   ];
 
-  onTableAction(event: ActionEvent) {
-    const { action, row } = event;
-    if (action === "view") this.viewDetails(row.id);
-    if (action === "edit") this.edit(row.id);
-    if (action === "delete") this.delete(row.id);
-  }
-
-  readonly fuelTypes = ["بنزين", "ديزل", "غاز طبيعي", "كهرباء", "هجين"];
-  readonly statusOptions = [
-    { value: "نشطة", label: "✅ نشطة" },
-    { value: "متوقفة للإصلاح", label: "🔧 متوقفة للإصلاح" },
-    { value: "عمرة", label: "🔨 عمرة" },
-    { value: "متوقفة للترخيص", label: "📄 متوقفة للترخيص" },
-    { value: "متوقفة للتكهين", label: "⛔ متوقفة للتكهين" },
-    { value: "في الانتظار", label: "⏳ في الانتظار" },
-  ];
-
-  // ── Computed filtered list ──
-  filteredVehicles = computed(() => {
-    let list = this.vehicles();
-    const term = this.searchTerm().toLowerCase();
-    if (term) {
-      list = list.filter(
-        (v) =>
-          v.plate_number.toLowerCase().includes(term) ||
-          (v.brand || "").toLowerCase().includes(term) ||
-          (v.model || "").toLowerCase().includes(term) ||
-          (v.department || "").toLowerCase().includes(term) ||
-          (v.type || "").toLowerCase().includes(term),
-      );
-    }
-    if (this.filterYear())
-      list = list.filter((v) => String(v.year) === this.filterYear());
-    if (this.filterBrand())
-      list = list.filter((v) => v.brand === this.filterBrand());
-    if (this.filterType())
-      list = list.filter((v) => v.type === this.filterType());
-    if (this.filterDepartment())
-      list = list.filter((v) => v.department === this.filterDepartment());
-    if (this.filterFuel())
-      list = list.filter((v) => v.fuel_type === this.filterFuel());
-    if (this.filterStatus())
-      list = list.filter((v) => v.status === this.filterStatus());
-    return list;
-  });
-
-  uniqueYears = computed(() =>
-    [
-      ...new Set(
-        this.vehicles()
-          .map((v) => v.year)
-          .filter(Boolean),
-      ),
-    ].sort((a, b) => (b ?? 0) - (a ?? 0)),
-  );
+  // ── Form ──
+  form: FormGroup;
 
   constructor(
-    private db: SupabaseService,
+    public svc: VehicleService,
     private fb: FormBuilder,
   ) {
     this.form = this.fb.group({
@@ -232,203 +241,62 @@ export class VehiclesComponent implements OnInit {
   }
 
   async ngOnInit() {
-    await Promise.all([
-      this.loadVehicles(),
-      this.loadEngines(),
-      this.loadDropdownOptions(),
-    ]);
+    await this.svc.loadAll();
   }
 
-  async loadVehicles() {
-    this.loading.set(true);
-    try {
-      const { data, error } = await this.db.supabase
-        .from("vehicles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      this.vehicles.set(data || []);
-    } catch (err: any) {
-      this.showToast("❌ خطأ في تحميل السيارات: " + err.message, "error");
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async loadEngines() {
-    try {
-      const { data } = await this.db.supabase
-        .from("engines")
-        .select(
-          "id, engine_code, engine_name, brand, displacement_l, cylinders, cam_type, timing_system, fuel_system, power_hp, torque_nm, compression_ratio, firing_order, block_material, oil_capacity_l, created_at",
-        )
-        .order("engine_code");
-      this.engines.set(data || []);
-    } catch {}
-  }
-
-  async loadDropdownOptions() {
-    try {
-      const { data } = await this.db.supabase
-        .from("vehicles")
-        .select("type, brand, model, department");
-      if (data) {
-        this.typeOptions.set([
-          ...new Set(data.map((v: any) => v.type).filter(Boolean)),
-        ]);
-        this.brandOptions.set([
-          ...new Set(data.map((v: any) => v.brand).filter(Boolean)),
-        ]);
-        this.modelOptions.set([
-          ...new Set(data.map((v: any) => v.model).filter(Boolean)),
-        ]);
-        this.departments.set([
-          ...new Set(data.map((v: any) => v.department).filter(Boolean)),
-        ]);
-      }
-    } catch {}
-  }
+  // ── Submit ─────────────────────────────────────────────────────────────
 
   async onSubmit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-    this.saving.set(true);
-    const vehicle = this.form.value;
-
-    try {
-      // Check duplicate
-      const { data: existing } = await this.db.supabase
-        .from("vehicles")
-        .select("id")
-        .eq("plate_number", vehicle.plate_number);
-
-      const isDuplicate = existing?.some((v: any) => v.id !== this.editingId());
-      if (isDuplicate) {
-        this.showToast("⚠️ رقم اللوحة موجود بالفعل", "warning");
-        return;
-      }
-
-      if (this.editingId()) {
-        const { error } = await this.db.supabase
-          .from("vehicles")
-          .update(vehicle)
-          .eq("id", this.editingId());
-        if (error) throw error;
-        this.showToast(`✅ تم تحديث السيارة ${vehicle.plate_number}`);
-      } else {
-        const { error } = await this.db.supabase
-          .from("vehicles")
-          .insert([vehicle]);
-        if (error) throw error;
-        this.showToast(`✅ تمت إضافة السيارة ${vehicle.plate_number}`);
-      }
-
-      this.resetForm();
-      await Promise.all([this.loadVehicles(), this.loadDropdownOptions()]);
-    } catch (err: any) {
-      this.showToast("❌ فشل حفظ السيارة: " + err.message, "error");
-    } finally {
-      this.saving.set(false);
-    }
+    const result = await this.svc.save(this.form.value, this.editingId());
+    this.showToast(result.message, result.ok ? "success" : "warning");
+    if (result.ok) this.resetForm();
   }
+
+  // ── View details ────────────────────────────────────────────────────────
 
   async viewDetails(id: string) {
-    try {
-      const { data: v, error } = await this.db.supabase
-        .from("vehicles")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      this.selectedVehicle.set(v);
-
-      if (v.engine_id) {
-        const { data: eng } = await this.db.supabase
-          .from("engines")
-          .select("*")
-          .eq("id", v.engine_id)
-          .single();
-        this.selectedEngine.set(eng);
-      } else {
-        this.selectedEngine.set(null);
-      }
-      this.showDetailsModal.set(true);
-    } catch (err: any) {
-      this.showToast("❌ فشل عرض التفاصيل", "error");
-    }
+    const v = await this.svc.getById(id);
+    if (!v) return;
+    this.selectedVehicle.set(v);
+    this.selectedEngine.set(
+      v.engine_id ? await this.svc.getEngineById(v.engine_id) : null,
+    );
+    this.showDetailsModal.set(true);
   }
+
+  // ── Edit ────────────────────────────────────────────────────────────────
 
   async edit(id: string) {
-    try {
-      const { data: v, error } = await this.db.supabase
-        .from("vehicles")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      this.editingId.set(id);
-      this.form.patchValue(v);
-      document
-        .getElementById("vehicleFormTop")
-        ?.scrollIntoView({ behavior: "smooth" });
-    } catch (err: any) {
-      this.showToast("❌ فشل تحميل بيانات السيارة", "error");
-    }
+    const v = await this.svc.getById(id);
+    if (!v) return;
+    this.editingId.set(id);
+    this.form.patchValue(v);
+    document
+      .getElementById("vehicleFormTop")
+      ?.scrollIntoView({ behavior: "smooth" });
   }
+
+  // ── Delete ──────────────────────────────────────────────────────────────
 
   async delete(id: string) {
-    try {
-      const { data: vehicle } = await this.db.supabase
-        .from("vehicles")
-        .select("plate_number")
-        .eq("id", id)
-        .single();
-      if (!vehicle) return;
-
-      const [sp, mt, ov] = await Promise.all([
-        this.db.supabase
-          .from("spare_parts")
-          .select("id", { count: "exact", head: true })
-          .eq("vehicle_plate", vehicle.plate_number),
-        this.db.supabase
-          .from("maintenance")
-          .select("id", { count: "exact", head: true })
-          .eq("vehicle_plate", vehicle.plate_number),
-        this.db.supabase
-          .from("overhauls")
-          .select("id", { count: "exact", head: true })
-          .eq("vehicle_plate", vehicle.plate_number),
-      ]);
-
-      const msg = `⚠️ حذف السيارة ${vehicle.plate_number}\n\nالبيانات المرتبطة:\n• طلبات قطع غيار: ${sp.count || 0}\n• سجلات صيانة: ${mt.count || 0}\n• عمرات: ${ov.count || 0}\n\nسيتم حذف جميع البيانات المرتبطة!\n\nهل أنت متأكد؟`;
-      if (!confirm(msg)) return;
-
-      await Promise.all([
-        this.db.supabase
-          .from("spare_parts")
-          .delete()
-          .eq("vehicle_plate", vehicle.plate_number),
-        this.db.supabase
-          .from("maintenance")
-          .delete()
-          .eq("vehicle_plate", vehicle.plate_number),
-        this.db.supabase
-          .from("overhauls")
-          .delete()
-          .eq("vehicle_plate", vehicle.plate_number),
-        this.db.supabase.from("vehicles").delete().eq("id", id),
-      ]);
-
-      this.showToast(
-        `✅ تم حذف السيارة ${vehicle.plate_number} وجميع بياناتها`,
-      );
-      await Promise.all([this.loadVehicles(), this.loadDropdownOptions()]);
-    } catch (err: any) {
-      this.showToast("❌ فشل الحذف: " + err.message, "error");
-    }
+    const result = await this.svc.delete(id);
+    if (result.message)
+      this.showToast(result.message, result.ok ? "success" : "error");
   }
+
+  // ── Table action dispatcher ──────────────────────────────────────────────
+
+  onTableAction(event: ActionEvent) {
+    if (event.action === "view") this.viewDetails(event.row.id);
+    if (event.action === "edit") this.edit(event.row.id);
+    if (event.action === "delete") this.delete(event.row.id);
+  }
+
+  // ── Reset ────────────────────────────────────────────────────────────────
 
   resetForm() {
     this.form.reset({ odometer_type: "kilometers", status: "نشطة" });
@@ -450,6 +318,34 @@ export class VehiclesComponent implements OnInit {
     this.filterStatus.set("");
     this.searchTerm.set("");
   }
+
+  // ── Excel ────────────────────────────────────────────────────────────────
+
+  exportToExcel() {
+    this.svc.exportToExcel(this.filteredVehicles());
+  }
+
+  downloadTemplate() {
+    this.svc.downloadImportTemplate();
+  }
+
+  async onImportFile(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.importLoading.set(true);
+    this.importResult.set(null);
+    const result = await this.svc.importFromExcel(file);
+    this.importResult.set(result);
+    this.importLoading.set(false);
+    if (result.imported > 0) {
+      this.showToast(`✅ تم استيراد ${result.imported} سيارة بنجاح`, "success");
+    } else if (result.errors.length) {
+      this.showToast(`⚠️ ${result.errors[0]}`, "warning");
+    }
+    (event.target as HTMLInputElement).value = "";
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   getStatusClass(status: string): string {
     const map: Record<string, string> = {
@@ -477,9 +373,5 @@ export class VehiclesComponent implements OnInit {
   ) {
     this.toast.set({ message, type });
     setTimeout(() => this.toast.set(null), 4000);
-  }
-
-  trackById(_: number, item: Vehicle) {
-    return item.id;
   }
 }

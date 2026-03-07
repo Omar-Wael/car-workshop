@@ -11,31 +11,48 @@ import {
 import { SupabaseService } from "../../core/services/supabase.service";
 import { SearchableSelectComponent } from "../../shared/components/searchable-select/searchable-select.component";
 import { DataTableComponent } from "../../shared/components/data-table/data-table.component";
-import { TableColumn, TableAction, ActionEvent, SelectOption, SparePart, CatalogPart, Technician, SparePartItem, Attachment } from "src/app/core/models";
+import {
+  TableColumn,
+  TableAction,
+  ActionEvent,
+  SelectOption,
+  SparePart,
+  CatalogPart,
+  Technician,
+  SparePartItem,
+  Attachment,
+  Vehicle,
+} from "src/app/core/models";
+import { SparePartService } from "src/app/core/services/spare-part.service";
 
 @Component({
   selector: "app-spare-parts",
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, SearchableSelectComponent, DataTableComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    SearchableSelectComponent,
+    DataTableComponent,
+  ],
   templateUrl: "./spare-parts.component.html",
   styleUrl: "./spare-parts.component.css",
 })
 export class SparePartsComponent implements OnInit {
-  // ── Data ──
-  spareParts = signal<SparePart[]>([]);
-  vehicles = signal<{ plate_number: string; department: string }[]>([]);
-  catalogParts = signal<CatalogPart[]>([]);
-  technicians = signal<Technician[]>([]);
-  loading = signal(false);
-  saving = signal(false);
-  editingId = signal<string | null>(null);
+  // ── Expose service signals directly to template ──
+  spareParts = this.svc.spareParts;
+  vehicles = this.svc.vehicles;
+  catalogParts = this.svc.catalogParts;
+  technicians = this.svc.technicians;
+  loading = this.svc.loading;
+  saving = this.svc.saving;
 
-  // ── Modal ──
+  // ── Component-local UI state ──
+  editingId = signal<string | null>(null);
   showDetailsModal = signal(false);
   selectedRecord = signal<SparePart | null>(null);
   showImageModal = signal(false);
   zoomedImage = signal<string>("");
-
-  // ── Toast ──
+  _selectedDepartment = signal("");
   toast = signal<{
     message: string;
     type: "success" | "error" | "warning";
@@ -71,9 +88,9 @@ export class SparePartsComponent implements OnInit {
     { value: "قطعة", label: "قطعة" },
   ];
 
-  // ── Computed SelectOption arrays ──
+  // ── Computed SelectOption arrays (derived from service signals) ──
   vehicleOptions = computed<SelectOption[]>(() =>
-    this.vehicles().map((v) => ({
+    this.vehicles().map((v: any) => ({
       value: v.plate_number,
       label: v.plate_number,
       sublabel: v.department || undefined,
@@ -84,21 +101,24 @@ export class SparePartsComponent implements OnInit {
     const depts = [
       ...new Set(
         this.vehicles()
-          .map((v) => v.department)
+          .map((v: any) => v.department)
           .filter(Boolean),
       ),
     ].sort();
-    return depts.map((d) => ({ value: d, label: d }));
+    return depts.map((d: any) => ({ value: d, label: d }));
   });
 
   technicianOptions = computed<SelectOption[]>(() =>
-    this.technicians().map((t) => ({ value: t.full_name, label: t.full_name })),
+    this.technicians().map((t: Technician) => ({
+      value: t.full_name,
+      label: t.full_name,
+    })),
   );
 
   catalogOptions = computed<SelectOption[]>(() =>
     this.catalogParts()
-      .filter((p) => p.is_active !== false)
-      .map((p) => ({
+      .filter((p: CatalogPart) => p.is_active !== false)
+      .map((p: CatalogPart) => ({
         value: p.id,
         label: p.part_name,
         sublabel:
@@ -112,78 +132,82 @@ export class SparePartsComponent implements OnInit {
       })),
   );
 
-  // ── Computed: plates present in data (for filter) ──
   platesInData = computed<SelectOption[]>(() => {
     const plates = [
       ...new Set(
         this.spareParts()
-          .map((sp) => sp.vehicle_plate)
-          .filter((p): p is string => Boolean(p)),
+          .map((sp: SparePart) => sp.vehicle_plate)
+          .filter(Boolean),
       ),
     ].sort();
-    return plates.map((p) => ({ value: p, label: p }));
+    return plates.map((p: any) => ({ value: p, label: p }));
   });
 
   techniciansInData = computed<SelectOption[]>(() => {
     const names = new Set<string>();
-    this.spareParts().forEach((sp) => {
-      if (sp.technician_name) {
-        sp.technician_name.split(",").forEach((n) => {
-          const t = n.trim();
-          if (t) names.add(t);
-        });
-      }
+    this.spareParts().forEach((sp: SparePart) => {
+      sp.technician_name?.split(",").forEach((n) => {
+        const t = n.trim();
+        if (t) names.add(t);
+      });
     });
     return [...names].sort().map((n) => ({ value: n, label: n }));
   });
 
-  // ── Computed filtered list ──
+  departmentsInData = computed<SelectOption[]>(() => {
+    const depts = [
+      ...new Set(
+        this.spareParts()
+          .map((sp: SparePart) => sp.department)
+          .filter(Boolean),
+      ),
+    ].sort();
+    return depts.map((d: any) => ({ value: d, label: d }));
+  });
+
   filteredSpareParts = computed(() => {
     let list = this.spareParts();
-
     const term = this.searchTerm().toLowerCase();
-    if (term) {
+    if (term)
       list = list.filter(
-        (sp) =>
+        (sp: SparePart) =>
           sp.request_number.toLowerCase().includes(term) ||
           sp.vehicle_plate?.toLowerCase().includes(term) ||
           (sp.department || "").toLowerCase().includes(term) ||
           (sp.technician_name || "").toLowerCase().includes(term),
       );
-    }
     if (this.filterPlate())
-      list = list.filter((sp) => sp.vehicle_plate === this.filterPlate());
+      list = list.filter(
+        (sp: SparePart) => sp.vehicle_plate === this.filterPlate(),
+      );
     if (this.filterDepartment())
-      list = list.filter((sp) => sp.department === this.filterDepartment());
+      list = list.filter(
+        (sp: SparePart) => sp.department === this.filterDepartment(),
+      );
     if (this.filterStatus())
-      list = list.filter((sp) => sp.status === this.filterStatus());
+      list = list.filter((sp: SparePart) => sp.status === this.filterStatus());
     if (this.filterTechnician()) {
       const tech = this.filterTechnician();
-      list = list.filter((sp) =>
+      list = list.filter((sp: SparePart) =>
         sp.technician_name
           ?.split(",")
-          .map((t) => t.trim())
+          .map((t: string) => t.trim())
           .includes(tech),
       );
     }
     if (this.filterFrom())
-      list = list.filter((sp) => (sp.created_at || "") >= this.filterFrom());
+      list = list.filter(
+        (sp: SparePart) => (sp.created_at || "") >= this.filterFrom(),
+      );
     if (this.filterTo())
       list = list.filter(
-        (sp) => (sp.created_at || "") <= this.filterTo() + "T23:59:59",
+        (sp: SparePart) =>
+          (sp.created_at || "") <= this.filterTo() + "T23:59:59",
       );
-
     return list;
   });
 
-  // ── Form ──
-  form: FormGroup;
-
-  get itemsArray(): FormArray {
-    return this.form.get("items") as FormArray;
-  }
-
-  // ── Table columns ──
+  // ── Table ──
   tableColumns: TableColumn[] = [
     {
       key: "request_number",
@@ -215,14 +239,14 @@ export class SparePartsComponent implements OnInit {
     {
       key: "status",
       label: "الحالة",
-      sortable: true,
+      sortable: false,
       renderHtml: (row) =>
         `<span class="badge ${this.getStatusClass(row.status)}">${row.status || "—"}</span>`,
     },
     {
       key: "created_at",
       label: "التاريخ",
-      sortable: true,
+      sortable: false,
       render: (row) =>
         row.created_at
           ? new Date(row.created_at).toLocaleDateString("ar-EG")
@@ -236,23 +260,24 @@ export class SparePartsComponent implements OnInit {
     { id: "delete", label: "حذف", icon: "🗑️", color: "delete" },
   ];
 
+  form: FormGroup;
+
+  get itemsArray(): FormArray {
+    return this.form.get("items") as FormArray;
+  }
+
   constructor(
-    private db: SupabaseService,
+    public svc: SparePartService,
     private fb: FormBuilder,
   ) {
     this.form = this.buildForm();
   }
 
   async ngOnInit() {
-    await Promise.all([
-      this.loadSpareParts(),
-      this.loadVehicles(),
-      this.loadCatalog(),
-      this.loadTechnicians(),
-    ]);
+    await this.svc.loadAll();
   }
 
-  // ── Form builder ──────────────────────────────────────────────────────────
+  // ── Form builders ──────────────────────────────────────────────────────────
 
   buildForm(): FormGroup {
     return this.fb.group({
@@ -262,43 +287,42 @@ export class SparePartsComponent implements OnInit {
       purchase_request_number: [null],
       odometer_reading: [null],
       request_date: [new Date().toISOString().split("T")[0]],
-      technician_name: [[]], // multi — stored as string[] then joined
+      technician_name: [[]],
       items: this.fb.array([this.buildItem()]),
-      attachments: [[]], // Attachment[]
+      attachments: [[]],
     });
   }
 
   buildItem(): FormGroup {
     return this.fb.group({
-      catalog_id: [null], // transient — used to auto-fill name/unit
+      catalog_id: [null],
       name: ["", Validators.required],
       quantity: [null, [Validators.required, Validators.min(0)]],
       unit: ["عدد", Validators.required],
       last_date: [null],
       with_sample: [false],
       condition: ["جديد"],
-      part_number: [null], // transient — stored in notes
-      serial_number: [null], // transient — stored in notes
+      part_number: [null],
+      serial_number: [null],
     });
   }
 
-  // ── Item management ───────────────────────────────────────────────────────
+  // ── Item management ────────────────────────────────────────────────────────
 
   addItem() {
     this.itemsArray.push(this.buildItem());
   }
 
   removeItem(index: number) {
-    if (this.itemsArray.length > 1) {
-      this.itemsArray.removeAt(index);
-    }
+    if (this.itemsArray.length > 1) this.itemsArray.removeAt(index);
   }
 
   onCatalogSelect(index: number, catalogId: string) {
-    const part = this.catalogParts().find((p) => p.id === catalogId);
+    const part = this.catalogParts().find(
+      (p: CatalogPart) => p.id === catalogId,
+    );
     if (!part) return;
-    const itemGroup = this.itemsArray.at(index);
-    itemGroup.patchValue({
+    this.itemsArray.at(index).patchValue({
       name: part.part_name,
       unit: part.unit || "عدد",
       part_number: part.part_number || null,
@@ -306,75 +330,12 @@ export class SparePartsComponent implements OnInit {
     });
   }
 
-  // ── Load data ─────────────────────────────────────────────────────────────
-
-  async loadSpareParts() {
-    this.loading.set(true);
-    try {
-      const { data, error } = await this.db.supabase
-        .from("spare_parts")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      this.spareParts.set(data || []);
-    } catch (err: any) {
-      this.showToast(
-        "❌ خطأ في تحميل طلبات قطع الغيار: " + err.message,
-        "error",
-      );
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async loadVehicles() {
-    try {
-      const { data } = await this.db.supabase
-        .from("vehicles")
-        .select("plate_number, department")
-        .order("plate_number");
-      this.vehicles.set(data || []);
-    } catch {}
-  }
-
-  async loadCatalog() {
-    try {
-      const { data } = await this.db.supabase
-        .from("spare_parts_catalog")
-        .select(
-          "id, part_name, part_number, serial_number, unit, category, is_active",
-        )
-        .order("part_name");
-      this.catalogParts.set(data || []);
-    } catch {}
-  }
-
-  async loadTechnicians() {
-    try {
-      const { data } = await this.db.supabase
-        .from("technicians")
-        .select("id, full_name, status, created_at")
-        .eq("status", "active")
-        .order("full_name");
-      this.technicians.set(data || []);
-    } catch {}
-  }
-
-  // ── Vehicle plate → auto-fill department ─────────────────────────────────
-
   onVehiclePlateChange(plate: string) {
-    const vehicle = this.vehicles().find((v) => v.plate_number === plate);
-    // department is display-only, not a form field, handled in template
-    if (vehicle) {
-      this._selectedDepartment.set(vehicle.department || "");
-    } else {
-      this._selectedDepartment.set("");
-    }
+    const vehicle = this.vehicles().find((v: any) => v.plate_number === plate);
+    this._selectedDepartment.set(vehicle?.department || "");
   }
 
-  _selectedDepartment = signal("");
-
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit ─────────────────────────────────────────────────────────────────
 
   async onSubmit() {
     if (this.form.invalid) {
@@ -382,10 +343,8 @@ export class SparePartsComponent implements OnInit {
       this.showToast("⚠️ يرجى تعبئة جميع الحقول المطلوبة", "warning");
       return;
     }
-
     const raw = this.form.value;
 
-    // Build items — convert part_number/serial_number into notes
     const items: SparePartItem[] = raw.items.map((item: any) => ({
       name: item.name,
       quantity: item.quantity,
@@ -394,7 +353,7 @@ export class SparePartsComponent implements OnInit {
       with_sample: item.with_sample || false,
       condition: item.condition || "جديد",
       catalog_part_name: item.catalog_id
-        ? this.catalogParts().find((p) => p.id === item.catalog_id)
+        ? this.catalogParts().find((p: CatalogPart) => p.id === item.catalog_id)
             ?.part_name || null
         : null,
       notes:
@@ -421,159 +380,100 @@ export class SparePartsComponent implements OnInit {
       attachments: raw.attachments || [],
     };
 
-    this.saving.set(true);
-    try {
-      if (this.editingId()) {
-        const { error } = await this.db.supabase
-          .from("spare_parts")
-          .update(payload)
-          .eq("id", this.editingId());
-        if (error) throw error;
-        this.showToast(`✅ تم تحديث الطلب ${payload.request_number}`);
-      } else {
-        // Duplicate check
-        const { data: existing } = await this.db.supabase
-          .from("spare_parts")
-          .select("id")
-          .eq("request_number", payload.request_number);
-        if (existing?.length) {
-          this.showToast("⚠️ رقم الطلب موجود بالفعل", "warning");
-          return;
-        }
-        const { error } = await this.db.supabase
-          .from("spare_parts")
-          .insert([payload]);
-        if (error) throw error;
-        this.showToast(`✅ تم إضافة الطلب رقم ${payload.request_number}`);
-      }
-
-      this.resetForm();
-      await this.loadSpareParts();
-    } catch (err: any) {
-      this.showToast("❌ فشل حفظ الطلب: " + err.message, "error");
-    } finally {
-      this.saving.set(false);
-    }
+    const result = await this.svc.save(payload, this.editingId());
+    this.showToast(result.message, result.ok ? "success" : "warning");
+    if (result.ok) this.resetForm();
   }
 
-  // ── View details ──────────────────────────────────────────────────────────
+  // ── CRUD — all delegate to service ────────────────────────────────────────
 
   async viewDetails(id: string) {
-    try {
-      const { data, error } = await this.db.supabase
-        .from("spare_parts")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      this.selectedRecord.set(data);
-      this.showDetailsModal.set(true);
-    } catch {
+    const sp = await this.svc.getById(id);
+    if (!sp) {
       this.showToast("❌ فشل عرض التفاصيل", "error");
+      return;
     }
+    this.selectedRecord.set(sp);
+    this.showDetailsModal.set(true);
   }
-
-  // ── Edit ──────────────────────────────────────────────────────────────────
 
   async edit(id: string) {
-    try {
-      const { data: sp, error } = await this.db.supabase
-        .from("spare_parts")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-
-      this.editingId.set(id);
-
-      // Reset items array
-      while (this.itemsArray.length) this.itemsArray.removeAt(0);
-
-      const techNames = sp.technician_name
-        ? sp.technician_name
-            .split(",")
-            .map((n: string) => n.trim())
-            .filter(Boolean)
-        : [];
-
-      this.form.patchValue({
-        request_number: sp.request_number,
-        vehicle_plate: sp.vehicle_plate,
-        status: sp.status,
-        purchase_request_number: sp.purchase_request_number,
-        odometer_reading: sp.odometer_reading,
-        request_date: sp.request_date
-          ? new Date(sp.request_date).toISOString().split("T")[0]
-          : "",
-        technician_name: techNames,
-        attachments: sp.attachments || [],
-      });
-
-      // Auto-fill department
-      this.onVehiclePlateChange(sp.vehicle_plate);
-
-      // Rebuild items
-      (sp.items || []).forEach(
-        (
-          item: SparePartItem & { catalog_part_name?: string; notes?: string },
-        ) => {
-          const partNumberMatch =
-            item.notes?.match(/رقم القطعة: ([^|]+)/)?.[1]?.trim() || null;
-          const serialMatch =
-            item.notes?.match(/Serial: (.+)/)?.[1]?.trim() || null;
-          const catalogPart = item.catalog_part_name
-            ? this.catalogParts().find(
-                (p) => p.part_name === item.catalog_part_name,
-              ) || null
-            : null;
-
-          this.itemsArray.push(
-            this.fb.group({
-              catalog_id: [catalogPart?.id || null],
-              name: [item.name, Validators.required],
-              quantity: [
-                item.quantity,
-                [Validators.required, Validators.min(0)],
-              ],
-              unit: [item.unit || "عدد", Validators.required],
-              last_date: [item.last_date || null],
-              with_sample: [item.with_sample || false],
-              condition: [item.condition || "جديد"],
-              part_number: [partNumberMatch],
-              serial_number: [serialMatch],
-            }),
-          );
-        },
-      );
-
-      if (!this.itemsArray.length) this.addItem();
-
-      document
-        .getElementById("sparePartsFormTop")
-        ?.scrollIntoView({ behavior: "smooth" });
-    } catch (err: any) {
+    const sp = await this.svc.getById(id);
+    if (!sp) {
       this.showToast("❌ فشل تحميل بيانات الطلب", "error");
+      return;
     }
-  }
 
-  // ── Delete ────────────────────────────────────────────────────────────────
+    this.editingId.set(id);
+    while (this.itemsArray.length) this.itemsArray.removeAt(0);
+
+    const techNames = sp.technician_name
+      ? sp.technician_name
+          .split(",")
+          .map((n: string) => n.trim())
+          .filter(Boolean)
+      : [];
+
+    this.form.patchValue({
+      request_number: sp.request_number,
+      vehicle_plate: sp.vehicle_plate,
+      status: sp.status,
+      purchase_request_number: sp.purchase_request_number,
+      odometer_reading: sp.odometer_reading,
+      request_date: sp.request_date
+        ? new Date(sp.request_date).toISOString().split("T")[0]
+        : "",
+      technician_name: techNames,
+      attachments: sp.attachments || [],
+    });
+
+    this.onVehiclePlateChange(sp.vehicle_plate);
+
+    (sp.items || []).forEach((item: any) => {
+      const partNumberMatch =
+        item.notes?.match(/رقم القطعة: ([^|]+)/)?.[1]?.trim() || null;
+      const serialMatch =
+        item.notes?.match(/Serial: (.+)/)?.[1]?.trim() || null;
+      const catalogPart = item.catalog_part_name
+        ? this.catalogParts().find(
+            (p: CatalogPart) => p.part_name === item.catalog_part_name,
+          ) || null
+        : null;
+
+      this.itemsArray.push(
+        this.fb.group({
+          catalog_id: [catalogPart?.id || null],
+          name: [item.name, Validators.required],
+          quantity: [item.quantity, [Validators.required, Validators.min(0)]],
+          unit: [item.unit || "عدد", Validators.required],
+          last_date: [item.last_date || null],
+          with_sample: [item.with_sample || false],
+          condition: [item.condition || "جديد"],
+          part_number: [partNumberMatch],
+          serial_number: [serialMatch],
+        }),
+      );
+    });
+
+    if (!this.itemsArray.length) this.addItem();
+    document
+      .getElementById("sparePartsFormTop")
+      ?.scrollIntoView({ behavior: "smooth" });
+  }
 
   async delete(id: string) {
-    if (!confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
-    try {
-      const { error } = await this.db.supabase
-        .from("spare_parts")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-      this.showToast("✅ تم حذف الطلب");
-      await this.loadSpareParts();
-    } catch (err: any) {
-      this.showToast("❌ فشل الحذف: " + err.message, "error");
-    }
+    const result = await this.svc.delete(id);
+    if (result.message)
+      this.showToast(result.message, result.ok ? "success" : "error");
   }
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
+  onTableAction(event: ActionEvent) {
+    if (event.action === "view") this.viewDetails(event.row.id);
+    if (event.action === "edit") this.edit(event.row.id);
+    if (event.action === "delete") this.delete(event.row.id);
+  }
+
+  // ── Reset ──────────────────────────────────────────────────────────────────
 
   resetForm() {
     this.form = this.buildForm();
@@ -581,7 +481,10 @@ export class SparePartsComponent implements OnInit {
     this._selectedDepartment.set("");
   }
 
-  // ── Filters ───────────────────────────────────────────────────────────────
+  closeModal() {
+    this.showDetailsModal.set(false);
+    this.selectedRecord.set(null);
+  }
 
   resetFilters() {
     this.filterPlate.set("");
@@ -593,20 +496,20 @@ export class SparePartsComponent implements OnInit {
     this.searchTerm.set("");
   }
 
-  // ── Image attachments ─────────────────────────────────────────────────────
+  // ── Image attachments ──────────────────────────────────────────────────────
 
   onFileSelect(event: Event) {
     const files = (event.target as HTMLInputElement).files;
     if (!files) return;
     const current: Attachment[] = this.form.get("attachments")?.value || [];
-
     Array.from(files).forEach((file) => {
       if (!file.type.startsWith("image/")) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         const data = e.target?.result as string;
-        const updated = [...current, { name: file.name, data }];
-        this.form.patchValue({ attachments: updated });
+        this.form.patchValue({
+          attachments: [...current, { name: file.name, data }],
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -625,16 +528,22 @@ export class SparePartsComponent implements OnInit {
     this.showImageModal.set(true);
   }
 
-  // ── Table actions ─────────────────────────────────────────────────────────
+  // ── Excel — all delegate to service ───────────────────────────────────────
 
-  onTableAction(event: ActionEvent) {
-    const { action, row } = event;
-    if (action === "view") this.viewDetails(row.id);
-    if (action === "edit") this.edit(row.id);
-    if (action === "delete") this.delete(row.id);
+  exportSummary() {
+    this.svc.exportSummary(this.filteredSpareParts());
+  }
+  exportDetailed() {
+    this.svc.exportDetailed(this.filteredSpareParts());
+  }
+  exportFull() {
+    this.svc.exportFull(this.filteredSpareParts());
+  }
+  downloadTemplate() {
+    this.svc.downloadImportTemplate();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   getStatusClass(status: string): string {
     const map: Record<string, string> = {
@@ -664,14 +573,12 @@ export class SparePartsComponent implements OnInit {
       .slice(0, 2)
       .map((i) => `${i.name} (${i.quantity} ${i.unit})`)
       .join("، ");
-    const more = row.items.length > 2 ? `+ (${row.items.length - 2} أصناف أخرى)` : "";
-    return preview + more;
+    return preview + (row.items.length > 2 ? ` +${row.items.length - 2}` : "");
   }
 
   get isEditing(): boolean {
     return !!this.editingId();
   }
-
   get currentAttachments(): Attachment[] {
     return this.form.get("attachments")?.value || [];
   }

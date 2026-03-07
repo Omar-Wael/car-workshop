@@ -8,16 +8,16 @@ export interface Vehicle {
   type?: string;
   brand?: string;
   model?: string;
-  year?: number;
-  chassis_number?: string;
-  engine_number?: string;
+  year: number | null;
+  chassis_number: string | null;
+  engine_number: string | null;
   fuel_type?: string;
   department?: string; // text field, not foreign key
-  engine_oil?: number;
-  engine_oil_type?: string;
-  transmission_oil?: number;
-  transmission_oil_type?: string;
-  notes?: string;
+  engine_oil: number | null;
+  engine_oil_type: string | null;
+  transmission_oil: number | null;
+  transmission_oil_type: string | null;
+  notes: string | null;
   status: string; // 'نشطة' | 'متوقفة للإصلاح' | 'عمرة' | 'متوقفة للترخيص' | 'متوقفة للتكهين' | 'في الانتظار'
   created_at: string;
   updated_at?: string;
@@ -27,10 +27,10 @@ export interface Vehicle {
   engine_power_hp?: number;
   engine_cylinders?: number;
   engine_fuel_system?: string;
-  oil_change_interval?: number;
-  oil_filter_interval?: number;
-  fuel_filter_interval?: number;
-  air_filter_interval?: number;
+  oil_change_interval: number | null;
+  oil_filter_interval: number | null;
+  fuel_filter_interval: number | null;
+  air_filter_interval: number | null;
   engine_id?: string; // uuid
   department_id?: string; // uuid
   images?: string[]; // for UI only, not in DB
@@ -52,31 +52,31 @@ export interface Engine {
   engine_name: string;
   brand?: string;
   family?: string;
-  cylinders?: number;
-  bore_mm?: number;
-  stroke_mm?: number;
-  displacement_cc?: number;
-  displacement_l?: number;
-  cam_type?: string;
-  valves_per_cyl?: number;
-  total_valves?: number;
+  cylinders?: number | null;
+  bore_mm?: number | null;
+  stroke_mm?: number | null;
+  displacement_cc?: number | null;
+  displacement_l?: number | null;
+  cam_type?: string | null;
+  valves_per_cyl?: number | null;
+  total_valves?: number | null;
   timing_system?: string;
   fuel_system?: string;
   fuel_type?: string;
-  power_hp?: number;
-  power_rpm?: number;
-  torque_nm?: number;
-  torque_rpm?: number;
+  power_hp?: number | null;
+  power_rpm?: number | null;
+  torque_nm?: number | null;
+  torque_rpm?: number | null;
   compression_ratio?: string;
-  compression_pressure_psi?: number;
+  compression_pressure_psi?: number | null;
   firing_order?: string;
   block_material?: string;
   head_material?: string;
-  engine_length_mm?: number;
-  engine_width_mm?: number;
-  engine_height_mm?: number;
-  dry_weight_kg?: number;
-  oil_capacity_l?: number;
+  engine_length_mm?: number | null;
+  engine_width_mm?: number | null;
+  engine_height_mm?: number | null;
+  dry_weight_kg?: number | null;
+  oil_capacity_l?: number | null;
   oil_type?: string;
   cooling_type?: string;
   is_active?: boolean;
@@ -88,7 +88,7 @@ export interface Engine {
 export interface SparePart {
   id?: string; // uuid
   request_number: string;
-  vehicle_plate?: string;
+  vehicle_plate: string;
   department: string | null;
   status: string;
   purchase_request_number?: string;
@@ -123,7 +123,7 @@ export interface SparePartCatalog {
 
 export interface Maintenance {
   id?: string; // uuid
-  vehicle_plate?: string;
+  vehicle_plate: string;
   entry_date?: string;
   expected_exit_date?: string;
   exit_date?: string;
@@ -131,11 +131,11 @@ export interface Maintenance {
   technicians?: string; // text field, not relation
   linked_request_number?: string;
   has_external_work?: boolean;
-  external_cost?: number;
-  status?: string;
+  external_cost: number | null;
+  status: string | null;
   attachments?: any; // jsonb
   created_at: string;
-  odometer_reading?: number;
+  odometer_reading: number | null;
   odometer_type?: string;
   maintenance_type?: string;
 
@@ -145,20 +145,20 @@ export interface Maintenance {
 
 export interface Overhaul {
   id?: string; // uuid
-  vehicle_plate?: string;
+  vehicle_plate: string;
   entry_date?: string;
   expected_exit_date?: string;
   exit_date?: string;
-  run_in_period_days?: number;
+  run_in_period_days: number | null;
   type?: string;
-  quotation_value?: number;
+  quotation_value: number | null;
   quotation_received?: boolean;
   check_received?: boolean;
   notes?: string;
-  status?: string;
+  status: string | null;
   attachments?: any; // jsonb
   created_at: string;
-  odometer_reading?: number;
+  odometer_reading: number | null;
   odometer_type?: string;
   technician_name?: string;
   technician_id?: string; // uuid
@@ -166,6 +166,12 @@ export interface Overhaul {
   // joined fields
   technician?: Technician;
   vehicle?: Vehicle;
+}
+
+export interface CheckVehicle {
+  vehicle_plate: string;
+  amount?: number | null;
+  note?: string | null;
 }
 
 export interface Check {
@@ -183,8 +189,9 @@ export interface Check {
   stage_6_board_chairman_approval_date?: string;
   stage_7_committee_approval_date?: string;
   stage_8_check_received_date?: string;
-  current_stage?: number;
+  current_stage: number;
   status?: string; // Default 'pending'
+  total_vehicles_amount?: number;
   bank_name?: string;
   check_date?: string;
   beneficiary?: string;
@@ -199,6 +206,12 @@ export interface Check {
   vehicle?: Vehicle;
 }
 
+export interface InvoiceVehicle {
+  vehicle_plate: string;
+  cost: number;
+  description?: string;
+}
+
 export interface Invoice {
   id?: string; // uuid
   invoice_number: string;
@@ -207,15 +220,15 @@ export interface Invoice {
   advance_purpose?: string;
   advance_recipient?: string;
   invoice_received_date?: string;
-  invoice_amount?: number;
+  invoice_amount: number | null;
   invoice_items?: any; // jsonb
   settlement_date?: string;
-  settlement_amount?: number;
-  difference_amount?: number;
+  settlement_amount: number | null;
+  difference_amount: number | null;
   related_type?: string;
   related_id?: string; // uuid
   related_reference?: string;
-  status?: string; // Default 'advance_issued'
+  status: string; // Default 'advance_issued'
   notes?: string;
   attachments?: any; // jsonb
   created_at: string;
@@ -393,9 +406,10 @@ export type TabId =
   | "stats";
 
 export interface TabConfig {
-  id: TabId;
+  id: string;
   label: string;
   icon: string;
+  group: "core" | "operations" | "references" | "reporting";
 }
 
 export interface SelectOption {
@@ -461,7 +475,52 @@ export interface CatalogPart {
   part_name: string;
   part_number?: string | null;
   serial_number?: string | null;
-  unit?: string | null;
   category?: string | null;
+  unit?: string | null;
+  compatible_plates?: string[];
+  notes?: string | null;
   is_active?: boolean;
+  updated_at?: string;
+  created_at?: string;
+}
+
+export interface StatCard {
+  label: string;
+  value: number | string;
+  icon: string;
+  color: string; // tailwind bg class
+  route: string;
+  sublabel?: string;
+}
+
+export interface StatusBreakdown {
+  label: string;
+  count: number;
+  color: string;
+}
+
+export interface RecentActivity {
+  type: string;
+  icon: string;
+  description: string;
+  date: string;
+  badge?: string;
+  badgeClass?: string;
+}
+
+export interface ExcelColumn {
+  key: string; // object property key
+  header: string; // Arabic/display header in Excel
+  width?: number; // column width in chars (default 20)
+  type?: "string" | "number" | "date" | "boolean";
+  // Optional transformer for export: row → cell value
+  exportFn?: (row: any) => any;
+  // Optional transformer for import: raw cell → typed value
+  importFn?: (cell: any) => any;
+}
+
+export interface ImportResult<T = any> {
+  data: T[];
+  errors: string[];
+  skipped: number;
 }

@@ -313,7 +313,68 @@
         قائمة السيارات
         <span class="count-badge">{{ filteredVehicles().length }}</span>
       </h2>
+      <div class="header-actions">
+        <!-- Export -->
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="exportToExcel()"
+          title="تصدير Excel"
+        >
+          📥 تصدير Excel
+        </button>
+        <!-- Import -->
+        <label class="btn btn-info btn-sm" title="استيراد من Excel">
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            (change)="onImportFile($event)"
+            hidden
+          />
+          📤 استيراد Excel
+        </label>
+        <!-- Template download -->
+        <button
+          class="btn btn-ghost btn-sm"
+          (click)="downloadTemplate()"
+          title="تحميل نموذج"
+        >
+          📋 نموذج الاستيراد
+        </button>
+      </div>
     </div>
+
+    <!-- Import loading indicator -->
+    @if (importLoading()) {
+      <div class="import-loading">⏳ جارٍ معالجة الملف...</div>
+    }
+
+    <!-- Import result -->
+    @if (importResult()) {
+      <div
+        class="import-result"
+        [class.import-result-ok]="importResult()!.imported > 0"
+      >
+        <div class="import-result-summary">
+          @if (importResult()!.imported > 0) {
+            ✅ تم استيراد <strong>{{ importResult()!.imported }}</strong> سيارة
+            بنجاح.
+          }
+          @if (importResult()!.skipped > 0) {
+            ⏩ تم تخطي <strong>{{ importResult()!.skipped }}</strong> صف فارغ.
+          }
+        </div>
+        @if (importResult()!.errors.length) {
+          <ul class="import-errors">
+            @for (err of importResult()!.errors; track err) {
+              <li>⚠️ {{ err }}</li>
+            }
+          </ul>
+        }
+        <button class="btn btn-ghost btn-sm" (click)="importResult.set(null)">
+          ✕ إغلاق
+        </button>
+      </div>
+    }
 
     <!-- Search -->
     <div class="search-bar">

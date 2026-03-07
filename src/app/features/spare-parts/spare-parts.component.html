@@ -193,7 +193,7 @@
                   type="number"
                   formControlName="quantity"
                   min="0"
-                  step="1"
+                  step="0.01"
                   [class.invalid]="
                     item.get('quantity')?.invalid &&
                     item.get('quantity')?.touched
@@ -342,6 +342,32 @@
         قائمة طلبات الصرف
         <span class="count-badge">{{ filteredSpareParts().length }}</span>
       </h2>
+      <div class="header-actions">
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="exportSummary()"
+          title="تصدير ملخص (صف لكل طلب)"
+        >
+          📥 تصدير ملخص
+        </button>
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="exportDetailed()"
+          title="تصدير تفصيلي (صف لكل صنف)"
+        >
+          📋 تصدير تفصيلي
+        </button>
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="exportFull()"
+          title="تصدير الملفين معاً"
+        >
+          📦 تصدير كامل
+        </button>
+        <button class="btn btn-ghost btn-sm" (click)="downloadTemplate()">
+          📄 نموذج الاستيراد
+        </button>
+      </div>
     </div>
 
     <!-- Search -->

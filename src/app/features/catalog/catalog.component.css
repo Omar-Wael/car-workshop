@@ -1,0 +1,368 @@
+/* ══════════════════════════════════════════════════
+   Catalog Component Styles
+══════════════════════════════════════════════════ */
+
+.catalog-container {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.count-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid #bfdbfe;
+}
+
+/* ── Form ── */
+form {
+  padding: 1.25rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+label {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.hint {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  background: #fff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+input.invalid {
+  border-color: #ef4444;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.required {
+  color: #ef4444;
+}
+.error-msg {
+  color: #ef4444;
+  font-size: 0.78rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  padding-top: 1.5rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #3b82f6;
+}
+
+/* ── Buttons ── */
+.btn-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+  font-family: inherit;
+}
+
+.btn:hover {
+  opacity: 0.88;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+.btn-secondary {
+  background: #e2e8f0;
+  color: #374151;
+}
+.btn-ghost {
+  background: transparent;
+  color: #64748b;
+  border: 1.5px solid #e2e8f0;
+}
+.btn-excel {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1.5px solid #bbf7d0;
+}
+.btn-excel-import {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+  cursor: pointer;
+}
+
+/* ── Search & filters ── */
+.search-bar {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.search-bar input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filters-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.filters-grid app-searchable-select {
+  min-width: 160px;
+  flex: 1;
+}
+
+.filter-select {
+  min-width: 150px;
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* ── Excel import feedback ── */
+.import-loading {
+  background: #fef9c3;
+  color: #a16207;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.88rem;
+}
+
+.import-result {
+  margin: 0.75rem 1.25rem;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  font-size: 0.88rem;
+}
+
+.import-result-ok {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.import-result-summary {
+  margin-bottom: 0.4rem;
+}
+
+.import-errors {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
+
+.import-errors li {
+  margin-bottom: 0.2rem;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-secondary {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.badge-department {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 0.72rem;
+  margin: 1px;
+}
+
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+:global(.code-badge) {
+  font-size: 0.82rem;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #334155;
+}
+
+.muted-text {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.2s ease;
+}
+
+.toast-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.toast-error {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.toast-warning {
+  background: #fef9c3;
+  color: #a16207;
+  border: 1px solid #fde68a;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

@@ -1,58 +1,169 @@
-<div class="min-h-screen bg-gray-50" dir="rtl">
-  <!-- Header -->
-  <header
-    class="bg-gradient-to-l from-blue-700 to-blue-900 text-white shadow-lg"
-  >
-    <div
-      class="max-w-screen-2xl mx-auto px-4 py-4 flex items-center justify-between"
-    >
-      <div class="flex items-center gap-3">
-        <span class="text-3xl">🚗</span>
+<div class="app-shell" dir="rtl">
+  <!-- ══ HEADER ══ -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-icon">🚗</span>
         <div>
-          <h1 class="text-xl font-bold tracking-wide">نظام إدارة المركبات</h1>
-          <p class="text-blue-200 text-xs">Vehicle Management System</p>
+          <h1 class="brand-title">نظام إدارة المركبات</h1>
+          <p class="brand-sub">Vehicle Management System</p>
         </div>
       </div>
-      <div class="text-sm text-blue-200">
-        {{ today | date: "EEEE، d MMMM y" : "" : "ar" }}
+      <div class="header-end">
+        <span class="header-date">{{
+          today | date: "EEEE، d MMMM y" : "" : "ar"
+        }}</span>
+        <button
+          class="mobile-menu-btn"
+          (click)="mobileMenuOpen.set(!mobileMenuOpen())"
+          [attr.aria-expanded]="mobileMenuOpen()"
+        >
+          {{ mobileMenuOpen() ? "✕" : "☰" }}
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- Tab Navigation -->
-  <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-    <div class="max-w-screen-2xl mx-auto px-2">
-      <div class="flex overflow-x-auto gap-1 py-1 scrollbar-hide">
-        @for (tab of tabs; track tab.id) {
-          <button
-            (click)="setActiveTab(tab.id)"
-            [class]="
-              activeTab() === tab.id
-                ? 'flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white whitespace-nowrap transition-all'
-                : 'flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap transition-all'
-            "
+  <!-- ══ NAV ══ -->
+  <nav class="app-nav" [class.nav-open]="mobileMenuOpen()">
+    <div class="nav-inner">
+      <!-- Dashboard standalone (always visible) -->
+      <button
+        class="nav-tab"
+        [class.nav-tab-active]="isActive('dashboard')"
+        (click)="navigate('dashboard')"
+      >
+        <span>🏠</span><span>لوحة التحكم</span>
+      </button>
+
+      <div class="nav-divider"></div>
+
+      <!-- Operations Dropdown -->
+      <div
+        class="dropdown-container"
+        (mouseenter)="onMouseEnter('operations')"
+        (mouseleave)="onMouseLeave()"
+      >
+        <button
+          class="nav-tab dropdown-toggle"
+          [class.nav-tab-active]="isGroupActive('operations')"
+          [class.dropdown-open]="openDropdown() === 'operations'"
+          (click)="toggleDropdown('operations')"
+        >
+          <span>⚙️</span>
+          <span>{{ getActiveTabInGroup("operations") }}</span>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+
+        @if (openDropdown() === "operations") {
+          <div
+            class="dropdown-menu"
+            (mouseenter)="onMouseEnter('operations')"
+            (mouseleave)="onMouseLeave()"
           >
-            <span>{{ tab.icon }}</span>
-            <span>{{ tab.label }}</span>
-          </button>
+            @for (tab of operationTabs; track tab.id) {
+              <button
+                class="dropdown-item"
+                [class.dropdown-item-active]="isActive(tab.id)"
+                (click)="navigate(tab.id)"
+              >
+                <span>{{ tab.icon }}</span>
+                <span>{{ tab.label }}</span>
+                @if (isActive(tab.id)) {
+                  <span class="active-indicator">✓</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- References Dropdown -->
+      <div
+        class="dropdown-container"
+        (mouseenter)="onMouseEnter('references')"
+        (mouseleave)="onMouseLeave()"
+      >
+        <button
+          class="nav-tab dropdown-toggle"
+          [class.nav-tab-active]="isGroupActive('references')"
+          [class.dropdown-open]="openDropdown() === 'references'"
+          (click)="toggleDropdown('references')"
+        >
+          <span>📚</span>
+          <span>{{ getActiveTabInGroup("references") }}</span>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+
+        @if (openDropdown() === "references") {
+          <div
+            class="dropdown-menu"
+            (mouseenter)="onMouseEnter('references')"
+            (mouseleave)="onMouseLeave()"
+          >
+            @for (tab of referenceTabs; track tab.id) {
+              <button
+                class="dropdown-item"
+                [class.dropdown-item-active]="isActive(tab.id)"
+                (click)="navigate(tab.id)"
+              >
+                <span>{{ tab.icon }}</span>
+                <span>{{ tab.label }}</span>
+                @if (isActive(tab.id)) {
+                  <span class="active-indicator">✓</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Reporting Dropdown -->
+      <div
+        class="dropdown-container"
+        (mouseenter)="onMouseEnter('reporting')"
+        (mouseleave)="onMouseLeave()"
+      >
+        <button
+          class="nav-tab dropdown-toggle"
+          [class.nav-tab-active]="isGroupActive('reporting')"
+          [class.dropdown-open]="openDropdown() === 'reporting'"
+          (click)="toggleDropdown('reporting')"
+        >
+          <span>📊</span>
+          <span>{{ getActiveTabInGroup("reporting") }}</span>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+
+        @if (openDropdown() === "reporting") {
+          <div
+            class="dropdown-menu"
+            (mouseenter)="onMouseEnter('reporting')"
+            (mouseleave)="onMouseLeave()"
+          >
+            @for (tab of reportingTabs; track tab.id) {
+              <button
+                class="dropdown-item"
+                [class.dropdown-item-active]="isActive(tab.id)"
+                (click)="navigate(tab.id)"
+              >
+                <span>{{ tab.icon }}</span>
+                <span>{{ tab.label }}</span>
+                @if (isActive(tab.id)) {
+                  <span class="active-indicator">✓</span>
+                }
+              </button>
+            }
+          </div>
         }
       </div>
     </div>
   </nav>
 
-  <!-- Content — hidden keeps components alive, preserving their state -->
-  <main class="max-w-screen-2xl mx-auto px-4 py-6">
-    <app-vehicles [hidden]="activeTab() !== 'vehicles'" />
-    <app-spare-parts [hidden]="activeTab() !== 'spare-parts'" />
-    <app-maintenance [hidden]="activeTab() !== 'maintenance'" />
-    <app-overhauls [hidden]="activeTab() !== 'overhauls'" />
-    <app-check [hidden]="activeTab() !== 'checks'" />
-    <app-invoices [hidden]="activeTab() !== 'invoices'" />
-    <app-technicians [hidden]="activeTab() !== 'technicians'" />
-    <app-departments [hidden]="activeTab() !== 'departments'" />
-    <app-engines [hidden]="activeTab() !== 'engines'" />
-    <app-catalog [hidden]="activeTab() !== 'catalog'" />
-    <app-daily-notes [hidden]="activeTab() !== 'daily-notes'" />
-    <app-stats [hidden]="activeTab() !== 'stats'" />
+  <!-- ══ CONTENT ══ -->
+  <main class="app-main">
+    <div class="app-content">
+      <router-outlet />
+    </div>
   </main>
 </div>

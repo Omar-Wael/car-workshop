@@ -1,1 +1,253 @@
-<p>catalog works!</p>
+<div class="catalog-container" id="catalogFormTop" dir="rtl">
+  <!-- ══ Toast ══ -->
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ════════════════════════════════════════════════════════
+       FORM CARD
+  ════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        {{ isEditing ? "✏️ تعديل قطعة" : "➕ إضافة قطعة جديدة للكتالوج" }}
+      </h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء التعديل
+        </button>
+      }
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="form-grid">
+        <!-- اسم القطعة -->
+        <div class="form-group">
+          <label>اسم القطعة <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="part_name"
+            [class.invalid]="
+              form.get('part_name')?.invalid && form.get('part_name')?.touched
+            "
+            placeholder="مثال: فلتر زيت"
+          />
+          @if (
+            form.get("part_name")?.invalid && form.get("part_name")?.touched
+          ) {
+            <span class="error-msg">اسم القطعة مطلوب</span>
+          }
+        </div>
+
+        <!-- رقم القطعة -->
+        <div class="form-group">
+          <label>رقم القطعة</label>
+          <input
+            type="text"
+            formControlName="part_number"
+            placeholder="اختياري"
+          />
+        </div>
+
+        <!-- Serial Number -->
+        <div class="form-group">
+          <label>Serial Number</label>
+          <input
+            type="text"
+            formControlName="serial_number"
+            placeholder="اختياري"
+          />
+        </div>
+
+        <!-- التصنيف -->
+        <div class="form-group">
+          <label>التصنيف</label>
+          <app-searchable-select
+            formControlName="category"
+            [options]="categoryOptions"
+            placeholder="— اختر التصنيف —"
+          />
+        </div>
+
+        <!-- الوحدة -->
+        <div class="form-group">
+          <label>الوحدة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="unit"
+            [options]="unitOptions"
+            placeholder="اختر الوحدة"
+          />
+        </div>
+
+        <!-- السيارات المتوافقة -->
+        <div class="form-group full-width">
+          <label
+            >السيارات المتوافقة
+            <span class="hint">(اختياري — اتركه فارغاً لقطعة عامة)</span></label
+          >
+          <app-searchable-select
+            formControlName="compatible_plates"
+            [options]="vehicleOptions()"
+            [multiple]="true"
+            placeholder="— اختر سيارة أو أكثر —"
+            searchPlaceholder="ابحث برقم اللوحة..."
+          />
+        </div>
+
+        <!-- ملاحظات -->
+        <div class="form-group full-width">
+          <label>ملاحظات</label>
+          <textarea
+            formControlName="notes"
+            rows="2"
+            placeholder="اختياري"
+          ></textarea>
+        </div>
+
+        <!-- نشط / موقوف -->
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="is_active" />
+            <span>قطعة نشطة (تظهر في اختيارات طلبات الصرف)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ القطعة
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       TABLE CARD
+  ════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <!-- Header with Excel buttons -->
+    <div class="card-header">
+      <h2>
+        كتالوج قطع الغيار
+        <span class="count-badge">{{ filteredParts().length }}</span>
+      </h2>
+      <div class="header-actions">
+        <button
+          class="btn btn-excel btn-sm"
+          (click)="exportToExcel()"
+          title="تصدير الكتالوج إلى Excel"
+        >
+          📥 تصدير Excel
+        </button>
+        <label class="btn btn-excel-import btn-sm" title="استيراد من Excel">
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            (change)="onImportFile($event)"
+            hidden
+          />
+          📤 استيراد Excel
+        </label>
+        <button class="btn btn-ghost btn-sm" (click)="downloadTemplate()">
+          📋 نموذج الاستيراد
+        </button>
+      </div>
+    </div>
+
+    <!-- Import feedback -->
+    @if (importLoading()) {
+      <div class="import-loading">⏳ جارٍ معالجة الملف...</div>
+    }
+    @if (importResult()) {
+      <div
+        class="import-result"
+        [class.import-result-ok]="importResult()!.imported > 0"
+      >
+        <div class="import-result-summary">
+          @if (importResult()!.imported > 0) {
+            ✅ تم استيراد <strong>{{ importResult()!.imported }}</strong> قطعة
+            بنجاح.
+          }
+          @if (importResult()!.skipped > 0) {
+            ⏩ تم تخطي <strong>{{ importResult()!.skipped }}</strong> صف فارغ.
+          }
+        </div>
+        @if (importResult()!.errors.length) {
+          <ul class="import-errors">
+            @for (err of importResult()!.errors; track err) {
+              <li>⚠️ {{ err }}</li>
+            }
+          </ul>
+        }
+        <button class="btn btn-ghost btn-sm" (click)="importResult.set(null)">
+          ✕ إغلاق
+        </button>
+      </div>
+    }
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث باسم القطعة، رقم القطعة، Serial..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+      />
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-grid">
+      <app-searchable-select
+        [options]="categoryOptions"
+        [value]="filterCategory()"
+        placeholder="كل التصنيفات"
+        (selectionChange)="filterCategory.set($any($event))"
+      />
+
+      <app-searchable-select
+        [options]="platesInData()"
+        [value]="filterPlate()"
+        placeholder="كل السيارات"
+        (selectionChange)="filterPlate.set($any($event))"
+      />
+
+      <select
+        class="filter-select"
+        [value]="filterActive()"
+        (change)="filterActive.set($any($event.target).value)"
+      >
+        <option value="all">كل الحالات</option>
+        <option value="active">نشطة فقط</option>
+        <option value="inactive">موقوفة فقط</option>
+      </select>
+
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح الفلاتر
+      </button>
+    </div>
+
+    <!-- Table -->
+    <app-data-table
+      [data]="filteredParts()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="📦"
+      emptyTitle="الكتالوج فارغ"
+      emptySubtitle="أضف قطعة جديدة باستخدام النموذج أعلاه"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>

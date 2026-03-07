@@ -1,1 +1,116 @@
-<p>departments works!</p>
+<div class="ref-container" id="deptFormTop" dir="rtl">
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل إدارة" : "➕ إضافة إدارة جديدة" }}</h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء
+        </button>
+      }
+    </div>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="simple-form">
+      <div class="form-group">
+        <label>اسم الإدارة <span class="required">*</span></label>
+        <input
+          type="text"
+          formControlName="name"
+          [class.invalid]="
+            form.get('name')?.invalid && form.get('name')?.touched
+          "
+          placeholder="مثال: إدارة الصيانة"
+        />
+        @if (form.get("name")?.invalid && form.get("name")?.touched) {
+          <span class="error-msg">اسم الإدارة مطلوب</span>
+        }
+      </div>
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 إضافة
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        الإدارات <span class="count-badge">{{ filteredDepts().length }}</span>
+      </h2>
+    </div>
+    <div class="search-filter-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث باسم الإدارة..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+        class="search-input"
+      />
+    </div>
+    <app-data-table
+      [data]="filteredDepts()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="🏢"
+      emptyTitle="لا توجد إدارات"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+@if (showDetailsModal() && selectedDept()) {
+  @let s = selectedDept()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🏢 {{ s.dept.name }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-section">
+          <h3>معلومات الإدارة</h3>
+          <div class="spec-row">
+            <span>الاسم</span><strong>{{ s.dept.name }}</strong>
+          </div>
+          <div class="spec-row">
+            <span>تاريخ الإضافة</span>
+            <span>{{ s.dept.created_at | date: "yyyy/MM/dd" }}</span>
+          </div>
+          <div class="spec-row">
+            <span>عدد السيارات التابعة</span>
+            <strong>{{ s.vehicleCount }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(s.dept.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}

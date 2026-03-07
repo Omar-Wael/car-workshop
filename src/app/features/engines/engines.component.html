@@ -1,1 +1,561 @@
-<p>engines works!</p>
+<div class="ref-container" id="engineFormTop" dir="rtl">
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ════ FORM ════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل محرك" : "➕ إضافة محرك جديد" }}</h2>
+      <div class="header-actions">
+        <button class="btn btn-excel btn-sm" (click)="svc.exportToExcel()">
+          📥 Excel
+        </button>
+        @if (isEditing) {
+          <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+            ✖ إلغاء
+          </button>
+        }
+      </div>
+    </div>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="section-title">🔖 التعريف</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>كود المحرك <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="engine_code"
+            [class.invalid]="
+              form.get('engine_code')?.invalid &&
+              form.get('engine_code')?.touched
+            "
+            placeholder="مثال: 2TR-FE"
+            style="font-family: monospace"
+          />
+        </div>
+        <div class="form-group">
+          <label>اسم المحرك <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="engine_name"
+            placeholder="مثال: Toyota 2.7L"
+          />
+        </div>
+        <div class="form-group">
+          <label>الشركة</label
+          ><input
+            type="text"
+            formControlName="brand"
+            placeholder="مثال: Toyota"
+          />
+        </div>
+        <div class="form-group">
+          <label>العائلة</label><input type="text" formControlName="family" />
+        </div>
+        <div class="form-group">
+          <label>نوع الوقود</label
+          ><input
+            type="text"
+            formControlName="fuel_type"
+            placeholder="بنزين / ديزل..."
+          />
+        </div>
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="is_active" />
+            <span>محرك نشط</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section-title">📐 الأبعاد والهندسة</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>عدد الأسطوانات</label>
+          <input
+            type="number"
+            formControlName="cylinders"
+            min="1"
+            max="16"
+            (input)="onGeometryChange(); onValvesChange()"
+          />
+        </div>
+        <div class="form-group">
+          <label>Bore (mm)</label>
+          <input
+            type="number"
+            formControlName="bore_mm"
+            min="0"
+            step="0.01"
+            (input)="onGeometryChange()"
+          />
+        </div>
+        <div class="form-group">
+          <label>Stroke (mm)</label>
+          <input
+            type="number"
+            formControlName="stroke_mm"
+            min="0"
+            step="0.01"
+            (input)="onGeometryChange()"
+          />
+        </div>
+        <div class="form-group">
+          <label>الإزاحة (cc) <span class="hint">— تُحسب تلقائياً</span></label>
+          <input type="number" formControlName="displacement_cc" min="0" />
+        </div>
+        <div class="form-group">
+          <label>السعة (L) <span class="hint">— تُحسب تلقائياً</span></label>
+          <input
+            type="number"
+            formControlName="displacement_l"
+            min="0"
+            step="0.1"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">🔄 توزيع الصمامات</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>نوع الكامة</label
+          ><input
+            type="text"
+            formControlName="cam_type"
+            placeholder="DOHC / SOHC..."
+          />
+        </div>
+        <div class="form-group">
+          <label>صمامات لكل أسطوانة</label>
+          <input
+            type="number"
+            formControlName="valves_per_cyl"
+            min="2"
+            max="8"
+            (input)="onValvesChange()"
+          />
+        </div>
+        <div class="form-group">
+          <label
+            >إجمالي الصمامات <span class="hint">— يُحسب تلقائياً</span></label
+          >
+          <input type="number" formControlName="total_valves" min="0" />
+        </div>
+        <div class="form-group">
+          <label>نظام التوقيت</label
+          ><input
+            type="text"
+            formControlName="timing_system"
+            placeholder="Chain / Belt / Gear"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">⛽ نظام الوقود والأداء</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>نظام الوقود</label
+          ><input
+            type="text"
+            formControlName="fuel_system"
+            placeholder="EFI / Carburettor..."
+          />
+        </div>
+        <div class="form-group">
+          <label>القوة (hp)</label
+          ><input type="number" formControlName="power_hp" min="0" />
+        </div>
+        <div class="form-group">
+          <label>عند دورة (rpm)</label
+          ><input type="number" formControlName="power_rpm" min="0" />
+        </div>
+        <div class="form-group">
+          <label>عزم الدوران (Nm)</label
+          ><input
+            type="number"
+            formControlName="torque_nm"
+            min="0"
+            step="0.1"
+          />
+        </div>
+        <div class="form-group">
+          <label>عند دورة (rpm)</label
+          ><input type="number" formControlName="torque_rpm" min="0" />
+        </div>
+      </div>
+
+      <div class="section-title">🗜️ الضغط والضبط</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>نسبة الضغط</label
+          ><input
+            type="text"
+            formControlName="compression_ratio"
+            placeholder="مثال: 10.5:1"
+          />
+        </div>
+        <div class="form-group">
+          <label>ضغط الضغط (PSI)</label
+          ><input
+            type="number"
+            formControlName="compression_pressure_psi"
+            min="0"
+            step="0.1"
+          />
+        </div>
+        <div class="form-group">
+          <label>ترتيب الاشتعال</label
+          ><input
+            type="text"
+            formControlName="firing_order"
+            placeholder="مثال: 1-3-4-2"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">🧱 المواد والأبعاد</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>معدن البدن</label
+          ><input
+            type="text"
+            formControlName="block_material"
+            placeholder="ألومنيوم / حديد..."
+          />
+        </div>
+        <div class="form-group">
+          <label>معدن الرأس</label
+          ><input type="text" formControlName="head_material" />
+        </div>
+        <div class="form-group">
+          <label>الطول (mm)</label
+          ><input type="number" formControlName="engine_length_mm" min="0" />
+        </div>
+        <div class="form-group">
+          <label>العرض (mm)</label
+          ><input type="number" formControlName="engine_width_mm" min="0" />
+        </div>
+        <div class="form-group">
+          <label>الارتفاع (mm)</label
+          ><input type="number" formControlName="engine_height_mm" min="0" />
+        </div>
+        <div class="form-group">
+          <label>الوزن الجاف (kg)</label
+          ><input
+            type="number"
+            formControlName="dry_weight_kg"
+            min="0"
+            step="0.1"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">🛢️ التشحيم والتبريد</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>سعة الزيت (L)</label
+          ><input
+            type="number"
+            formControlName="oil_capacity_l"
+            min="0"
+            step="0.1"
+          />
+        </div>
+        <div class="form-group">
+          <label>نوع الزيت</label
+          ><input
+            type="text"
+            formControlName="oil_type"
+            placeholder="مثال: 5W-30"
+          />
+        </div>
+        <div class="form-group">
+          <label>نوع التبريد</label
+          ><input
+            type="text"
+            formControlName="cooling_type"
+            placeholder="مائي / هوائي"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">📝 ملاحظات</div>
+      <div class="padded">
+        <textarea
+          formControlName="notes"
+          rows="3"
+          style="width: 100%; box-sizing: border-box"
+          placeholder="أي ملاحظات إضافية..."
+        ></textarea>
+      </div>
+
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ المحرك
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════ TABLE ════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        المحركات المسجلة
+        <span class="count-badge">{{ filteredEngines().length }}</span>
+      </h2>
+    </div>
+    <div class="search-filter-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث بالكود أو الاسم أو الشركة..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+        class="search-input"
+      />
+      <app-searchable-select
+        [options]="activeOptions"
+        [value]="filterActive()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterActive.set($any($event))"
+        style="min-width: 140px"
+      />
+    </div>
+    <app-data-table
+      [data]="filteredEngines()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="🔧"
+      emptyTitle="لا توجد محركات"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+<!-- ════ DETAILS MODAL ════ -->
+@if (showDetailsModal() && selectedEngine()) {
+  @let e = selectedEngine()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🔧 {{ e.engine_code }} — {{ e.engine_name }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid-3">
+          <div class="detail-section">
+            <h3>🔖 التعريف</h3>
+            @if (row(e.engine_code)) {
+              <div class="spec-row">
+                <span>الكود</span><code>{{ e.engine_code }}</code>
+              </div>
+            }
+            @if (row(e.engine_name)) {
+              <div class="spec-row">
+                <span>الاسم</span><strong>{{ e.engine_name }}</strong>
+              </div>
+            }
+            @if (row(e.brand)) {
+              <div class="spec-row">
+                <span>الشركة</span><span>{{ e.brand }}</span>
+              </div>
+            }
+            @if (row(e.family)) {
+              <div class="spec-row">
+                <span>العائلة</span><span>{{ e.family }}</span>
+              </div>
+            }
+            @if (row(e.fuel_type)) {
+              <div class="spec-row">
+                <span>نوع الوقود</span><span>{{ e.fuel_type }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>📐 الهندسة</h3>
+            @if (row(e.cylinders)) {
+              <div class="spec-row">
+                <span>أسطوانات</span><strong>{{ e.cylinders }}</strong>
+              </div>
+            }
+            @if (row(e.bore_mm)) {
+              <div class="spec-row">
+                <span>Bore</span><span>{{ e.bore_mm }} mm</span>
+              </div>
+            }
+            @if (row(e.stroke_mm)) {
+              <div class="spec-row">
+                <span>Stroke</span><span>{{ e.stroke_mm }} mm</span>
+              </div>
+            }
+            @if (row(e.displacement_cc)) {
+              <div class="spec-row">
+                <span>الإزاحة</span><span>{{ e.displacement_cc }} cc</span>
+              </div>
+            }
+            @if (row(e.displacement_l)) {
+              <div class="spec-row">
+                <span>السعة</span><strong>{{ e.displacement_l }} L</strong>
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>🔄 الصمامات</h3>
+            @if (row(e.cam_type)) {
+              <div class="spec-row">
+                <span>الكامة</span><span>{{ e.cam_type }}</span>
+              </div>
+            }
+            @if (row(e.valves_per_cyl)) {
+              <div class="spec-row">
+                <span>صمامات/أسطوانة</span><span>{{ e.valves_per_cyl }}</span>
+              </div>
+            }
+            @if (row(e.total_valves)) {
+              <div class="spec-row">
+                <span>إجمالي الصمامات</span
+                ><strong>{{ e.total_valves }}</strong>
+              </div>
+            }
+            @if (row(e.timing_system)) {
+              <div class="spec-row">
+                <span>نظام التوقيت</span><span>{{ e.timing_system }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>⛽ الأداء</h3>
+            @if (row(e.fuel_system)) {
+              <div class="spec-row">
+                <span>نظام الوقود</span><span>{{ e.fuel_system }}</span>
+              </div>
+            }
+            @if (row(e.power_hp)) {
+              <div class="spec-row">
+                <span>القوة</span><strong>{{ e.power_hp }} hp</strong>
+                @if (row(e.power_rpm)) {
+                  <small> @ {{ e.power_rpm }} rpm</small>
+                }
+              </div>
+            }
+            @if (row(e.torque_nm)) {
+              <div class="spec-row">
+                <span>العزم</span><strong>{{ e.torque_nm }} Nm</strong>
+                @if (row(e.torque_rpm)) {
+                  <small> @ {{ e.torque_rpm }} rpm</small>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>🗜️ الضغط والضبط</h3>
+            @if (row(e.compression_ratio)) {
+              <div class="spec-row">
+                <span>نسبة الضغط</span
+                ><strong>{{ e.compression_ratio }}</strong>
+              </div>
+            }
+            @if (row(e.compression_pressure_psi)) {
+              <div class="spec-row">
+                <span>ضغط الضغط</span
+                ><span>{{ e.compression_pressure_psi }} PSI</span>
+              </div>
+            }
+            @if (row(e.firing_order)) {
+              <div class="spec-row">
+                <span>ترتيب الاشتعال</span><code>{{ e.firing_order }}</code>
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>🛢️ التشحيم</h3>
+            @if (row(e.oil_capacity_l)) {
+              <div class="spec-row">
+                <span>سعة الزيت</span><strong>{{ e.oil_capacity_l }} L</strong>
+              </div>
+            }
+            @if (row(e.oil_type)) {
+              <div class="spec-row">
+                <span>نوع الزيت</span><span>{{ e.oil_type }}</span>
+              </div>
+            }
+            @if (row(e.cooling_type)) {
+              <div class="spec-row">
+                <span>التبريد</span><span>{{ e.cooling_type }}</span>
+              </div>
+            }
+          </div>
+
+          @if (row(e.block_material) || row(e.dry_weight_kg)) {
+            <div class="detail-section">
+              <h3>🧱 المواد والوزن</h3>
+              @if (row(e.block_material)) {
+                <div class="spec-row">
+                  <span>معدن البدن</span><span>{{ e.block_material }}</span>
+                </div>
+              }
+              @if (row(e.head_material)) {
+                <div class="spec-row">
+                  <span>معدن الرأس</span><span>{{ e.head_material }}</span>
+                </div>
+              }
+              @if (row(e.dry_weight_kg)) {
+                <div class="spec-row">
+                  <span>الوزن الجاف</span><span>{{ e.dry_weight_kg }} kg</span>
+                </div>
+              }
+            </div>
+          }
+
+          @if (e.notes) {
+            <div class="detail-section full-width">
+              <h3>📝 ملاحظات</h3>
+              <p
+                style="
+                  white-space: pre-line;
+                  margin: 0;
+                  font-size: 0.88rem;
+                  color: #374151;
+                "
+              >
+                {{ e.notes }}
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(e.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}

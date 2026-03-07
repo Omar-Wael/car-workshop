@@ -1,0 +1,145 @@
+<div class="dashboard" dir="rtl">
+  @if (loading()) {
+    <div class="dash-loading">
+      <div class="dash-spinner"></div>
+      <p>جارٍ تحميل لوحة التحكم...</p>
+    </div>
+  } @else {
+    <!-- ══ Welcome strip ══ -->
+    <div class="welcome-strip">
+      <div class="welcome-text">
+        <h1>👋 مرحباً بك في نظام إدارة المركبات</h1>
+        <p>{{ today | date: "EEEE، d MMMM y" : "" : "ar" }}</p>
+      </div>
+      <div class="welcome-stats">
+        <span class="ws-badge">🚗 {{ totalVehicles() }} مركبة</span>
+        <span class="ws-badge">👷 {{ totalTechnicians() }} فني</span>
+        <span class="ws-badge">🏢 {{ totalDepartments() }} قسم</span>
+      </div>
+    </div>
+
+    <!-- ══ Stat cards ══ -->
+    <div class="stat-cards-grid">
+      @for (card of statCards(); track card.route) {
+        <a
+          class="stat-card"
+          [class]="'stat-card ' + card.color"
+          [routerLink]="card.route"
+        >
+          <div class="sc-icon">{{ card.icon }}</div>
+          <div class="sc-body">
+            <div class="sc-value">{{ card.value }}</div>
+            <div class="sc-label">{{ card.label }}</div>
+            @if (card.sublabel) {
+              <div class="sc-sub">{{ card.sublabel }}</div>
+            }
+          </div>
+          <div class="sc-arrow">›</div>
+        </a>
+      }
+    </div>
+
+    <!-- ══ Middle row: breakdowns + activity ══ -->
+    <div class="middle-row">
+      <!-- Vehicle status breakdown -->
+      <div class="panel">
+        <h3 class="panel-title">🚗 حالة المركبات</h3>
+        @if (vehicleStatuses().length) {
+          <div class="breakdown-list">
+            @for (s of vehicleStatuses(); track s.label) {
+              <div class="breakdown-item">
+                <div class="breakdown-header">
+                  <span class="breakdown-label">{{ s.label }}</span>
+                  <span class="breakdown-count">{{ s.count }}</span>
+                </div>
+                <div class="breakdown-bar">
+                  <div
+                    class="breakdown-fill"
+                    [class]="s.color"
+                    [style.width.%]="getStatusPercent(s.count, totalVehicles())"
+                  ></div>
+                </div>
+                <div class="breakdown-pct">
+                  {{ getStatusPercent(s.count, totalVehicles()) }}%
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-panel">لا توجد بيانات</p>
+        }
+      </div>
+
+      <!-- Spare parts status breakdown -->
+      <div class="panel">
+        <h3 class="panel-title">🔧 حالة طلبات قطع الغيار</h3>
+        @if (sparePartsStatuses().length) {
+          <div class="breakdown-list">
+            @for (s of sparePartsStatuses(); track s.label) {
+              <div class="breakdown-item">
+                <div class="breakdown-header">
+                  <span class="breakdown-label">{{ s.label }}</span>
+                  <span class="breakdown-count">{{ s.count }}</span>
+                </div>
+                <div class="breakdown-bar">
+                  <div
+                    class="breakdown-fill"
+                    [class]="s.color"
+                    [style.width.%]="
+                      getStatusPercent(s.count, totalSpareParts())
+                    "
+                  ></div>
+                </div>
+                <div class="breakdown-pct">
+                  {{ getStatusPercent(s.count, totalSpareParts()) }}%
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-panel">لا توجد بيانات</p>
+        }
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="panel panel-wide">
+        <h3 class="panel-title">🕐 آخر النشاطات</h3>
+        @if (recentActivity().length) {
+          <div class="activity-list">
+            @for (act of recentActivity(); track act.date + act.description) {
+              <div class="activity-item">
+                <div class="act-icon">{{ act.icon }}</div>
+                <div class="act-body">
+                  <div class="act-desc">{{ act.description }}</div>
+                  <div class="act-date">{{ formatDate(act.date) }}</div>
+                </div>
+                @if (act.badge) {
+                  <span class="badge" [class]="act.badgeClass">{{
+                    act.badge
+                  }}</span>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-panel">لا توجد نشاطات حديثة</p>
+        }
+      </div>
+    </div>
+
+    <!-- ══ Quick links ══ -->
+    <div class="quick-links">
+      <h3 class="panel-title">⚡ وصول سريع</h3>
+      <div class="ql-grid">
+        <a routerLink="/vehicles" class="ql-btn ql-blue">🚗 إضافة مركبة</a>
+        <a routerLink="/spare-parts" class="ql-btn ql-orange">🔧 طلب صرف قطع</a>
+        <a routerLink="/maintenance" class="ql-btn ql-green">🛠️ تسجيل صيانة</a>
+        <a routerLink="/overhauls" class="ql-btn ql-red">⚙️ تسجيل عطل</a>
+        <a routerLink="/invoices" class="ql-btn ql-purple">🧾 فاتورة جديدة</a>
+        <a routerLink="/daily-notes" class="ql-btn ql-slate">📝 ملاحظة يومية</a>
+        <a routerLink="/technicians" class="ql-btn ql-indigo">👷 إضافة فني</a>
+        <a routerLink="/stats" class="ql-btn ql-teal">📊 التقارير التفصيلية</a>
+      </div>
+    </div>
+  }
+</div>

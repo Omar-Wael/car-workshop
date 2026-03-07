@@ -96,6 +96,7 @@
     border-color 0.15s,
     box-shadow 0.15s;
   direction: rtl;
+  text-align: start;
 }
 
 .form-group input:focus,
@@ -212,7 +213,8 @@
   font-size: 0.8rem;
   font-weight: 700;
 }
-*/ .search-bar {
+
+.search-bar {
   margin-bottom: 0.875rem;
 }
 

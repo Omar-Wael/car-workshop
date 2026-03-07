@@ -1,0 +1,22 @@
+/* ── Engine-specific: stage progress (reused in check) ── */
+.stage-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+.stage-progress {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+.stage-bar {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 3px;
+  transition: width 0.3s;
+}

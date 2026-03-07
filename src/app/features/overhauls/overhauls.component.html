@@ -1,1 +1,452 @@
-<p>overhauls works!</p>
+<div class="overhaul-container" id="overhaulFormTop" dir="rtl">
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ════════════════════════════ FORM CARD ════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل سجل العمرة" : "➕ إضافة عمرة جديدة" }}</h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء التعديل
+        </button>
+      }
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="section-title">🔨 بيانات العمرة</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>رقم اللوحة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="vehicle_plate"
+            [options]="vehicleOptions()"
+            placeholder="اختر السيارة"
+            [invalid]="
+              !!(
+                form.get('vehicle_plate')?.invalid &&
+                form.get('vehicle_plate')?.touched
+              )
+            "
+            (selectionChange)="onVehiclePlateChange($any($event))"
+          />
+          @if (
+            form.get("vehicle_plate")?.invalid &&
+            form.get("vehicle_plate")?.touched
+          ) {
+            <span class="error-msg">رقم اللوحة مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>الإدارة</label>
+          <div class="readonly-field">
+            {{ _selectedDepartment() || "— يُملأ تلقائياً —" }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>نوع العمرة <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="type"
+            [class.invalid]="
+              form.get('type')?.invalid && form.get('type')?.touched
+            "
+            placeholder="مثال: عمرة محرك، هيكل..."
+          />
+          @if (form.get("type")?.invalid && form.get("type")?.touched) {
+            <span class="error-msg">نوع العمرة مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>الحالة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="اختر الحالة"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ البدء</label>
+          <input type="date" formControlName="entry_date" />
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ الانتهاء المتوقع</label>
+          <input type="date" formControlName="expected_exit_date" />
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ الانتهاء الفعلي</label>
+          <input type="date" formControlName="exit_date" />
+        </div>
+
+        <div class="form-group">
+          <label>مدة التليين (يوم)</label>
+          <input
+            type="number"
+            formControlName="run_in_period_days"
+            min="0"
+            placeholder="اختياري"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>قيمة عرض السعر</label>
+          <input
+            type="number"
+            formControlName="quotation_value"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>قراءة العداد</label>
+          <input
+            type="number"
+            formControlName="odometer_reading"
+            min="0"
+            placeholder="اختياري"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>الفني / الفنيون</label>
+          <app-searchable-select
+            formControlName="technician_name"
+            [options]="technicianOptions()"
+            [multiple]="true"
+            placeholder="اختر فني أو أكثر"
+            searchPlaceholder="ابحث باسم الفني..."
+          />
+        </div>
+
+        <div class="form-group checkboxes-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="quotation_received" />
+            <span>تم جلب عروض الأسعار</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="check_received" />
+            <span>تم استلام الشيك</span>
+          </label>
+        </div>
+
+        <div class="form-group full-width">
+          <label>ملاحظات</label>
+          <textarea
+            formControlName="notes"
+            rows="3"
+            placeholder="اختياري..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- المرفقات -->
+      <div class="section-title">📸 الصور والمرفقات</div>
+      <div class="attachments-section">
+        <label class="file-upload-btn">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            (change)="onFileSelect($event)"
+            hidden
+          />
+          📁 إضافة صور
+        </label>
+        @if (currentAttachments.length) {
+          <div class="attachments-grid">
+            @for (
+              att of currentAttachments;
+              track trackByIndex($index);
+              let ai = $index
+            ) {
+              <div class="attachment-thumb">
+                <img
+                  [src]="att.data"
+                  [alt]="att.name"
+                  (click)="openZoom(att.data)"
+                />
+                <div class="attachment-name">{{ att.name }}</div>
+                <button
+                  type="button"
+                  class="attachment-remove"
+                  (click)="removeAttachment(ai)"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="no-attachments">لا توجد صور مرفقة</p>
+        }
+      </div>
+
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ العمرة
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════════════════════════ TABLE CARD ════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        سجلات العمرات
+        <span class="count-badge">{{ filteredOverhauls().length }}</span>
+      </h2>
+      <button class="btn btn-excel btn-sm" (click)="exportToExcel()">
+        📥 تصدير Excel
+      </button>
+    </div>
+
+    <div class="search-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث برقم السيارة، نوع العمرة، الفني..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+      />
+    </div>
+
+    <div class="filters-grid">
+      <app-searchable-select
+        [options]="platesInData()"
+        [value]="filterPlate()"
+        placeholder="كل السيارات"
+        (selectionChange)="filterPlate.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="typesInData()"
+        [value]="filterType()"
+        placeholder="كل الأنواع"
+        (selectionChange)="filterType.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="departmentOptions()"
+        [value]="filterDept()"
+        placeholder="كل الإدارات"
+        (selectionChange)="filterDept.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="techniciansInData()"
+        [value]="filterTech()"
+        placeholder="كل الفنيين"
+        (selectionChange)="filterTech.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="statusOptions"
+        [value]="filterStatus()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterStatus.set($any($event))"
+      />
+      <div class="date-filter">
+        <label>من</label>
+        <input
+          type="date"
+          [value]="filterFrom()"
+          (change)="filterFrom.set($any($event.target).value)"
+        />
+      </div>
+      <div class="date-filter">
+        <label>إلى</label>
+        <input
+          type="date"
+          [value]="filterTo()"
+          (change)="filterTo.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح الفلاتر
+      </button>
+    </div>
+
+    <app-data-table
+      [data]="filteredOverhauls()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="🔨"
+      emptyTitle="لا توجد سجلات عمرات"
+      emptySubtitle="أضف عمرة جديدة باستخدام النموذج أعلاه"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+<!-- ════════════════════════ DETAILS MODAL ════════════════════════ -->
+@if (showDetailsModal() && selectedRecord()) {
+  @let o = selectedRecord()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🔨 تفاصيل العمرة — {{ o.vehicle_plate }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid-2">
+          <div class="detail-section">
+            <h3>🔧 معلومات العمرة</h3>
+            <div class="detail-row">
+              <span>السيارة</span><strong>{{ o.vehicle_plate }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>نوع العمرة</span><strong>{{ o.type || "—" }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>الحالة</span>
+              <span [innerHTML]="renderStatusBadge(o.status || '')"></span>
+            </div>
+            @if (o.entry_date) {
+              <div class="detail-row">
+                <span>تاريخ البدء</span>
+                <strong>{{ o.entry_date | date: "yyyy/MM/dd" }}</strong>
+              </div>
+            }
+            @if (o.expected_exit_date) {
+              <div class="detail-row">
+                <span>الانتهاء المتوقع</span>
+                <strong>{{ o.expected_exit_date | date: "yyyy/MM/dd" }}</strong>
+              </div>
+            }
+            @if (o.exit_date) {
+              <div class="detail-row">
+                <span>الانتهاء الفعلي</span>
+                <strong>{{ o.exit_date | date: "yyyy/MM/dd" }}</strong>
+              </div>
+            }
+            @if (o.run_in_period_days) {
+              <div class="detail-row">
+                <span>مدة التليين</span>
+                <strong>{{ o.run_in_period_days }} يوم</strong>
+              </div>
+            }
+            @if (o.odometer_reading) {
+              <div class="detail-row">
+                <span>قراءة العداد</span>
+                <strong>{{ o.odometer_reading }}</strong>
+              </div>
+            }
+          </div>
+
+          <div class="detail-section">
+            <h3>💰 المعلومات المالية</h3>
+            <div class="detail-row">
+              <span>قيمة عرض السعر</span>
+              <strong>{{
+                o.quotation_value
+                  ? (o.quotation_value | number: "1.2-2")
+                  : "غير محدد"
+              }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>عروض أسعار</span>
+              <span
+                [innerHTML]="
+                  o.quotation_received
+                    ? '<span class=\'badge badge-success\'>✅ تم جلبها</span>'
+                    : '<span class=\'badge badge-secondary\'>❌ لم تُجلب</span>'
+                "
+              ></span>
+            </div>
+            <div class="detail-row">
+              <span>الشيك</span>
+              <span
+                [innerHTML]="
+                  o.check_received
+                    ? '<span class=\'badge badge-success\'>✅ تم الاستلام</span>'
+                    : '<span class=\'badge badge-secondary\'>❌ لم يُستلم</span>'
+                "
+              ></span>
+            </div>
+            <h3 style="margin-top: 1rem">👨‍🔧 الفني/الفنيون</h3>
+            @if (o.technician_name) {
+              <div class="badges-wrap">
+                @for (t of o.technician_name.split(","); track t) {
+                  <span class="badge badge-tech">{{ t.trim() }}</span>
+                }
+              </div>
+            } @else {
+              <span class="muted">—</span>
+            }
+          </div>
+
+          @if (o.notes) {
+            <div class="detail-section full-width">
+              <h3>📝 ملاحظات</h3>
+              <p class="repair-work-text">{{ o.notes }}</p>
+            </div>
+          }
+
+          @if (o.attachments?.length) {
+            <div class="detail-section full-width">
+              <h3>📸 المرفقات ({{ o.attachments!.length }})</h3>
+              <div class="attachments-grid">
+                @for (img of o.attachments; track trackByIndex($index)) {
+                  @if (img.data?.startsWith("data:image")) {
+                    <div class="attachment-thumb" (click)="openZoom(img.data)">
+                      <img [src]="img.data" [alt]="img.name" />
+                      <div class="attachment-name">{{ img.name }}</div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(o.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showImageModal()) {
+  <div
+    class="modal-backdrop modal-backdrop-dark"
+    (click)="showImageModal.set(false)"
+  >
+    <div class="zoom-modal" (click)="$event.stopPropagation()">
+      <button
+        class="modal-close zoom-close"
+        (click)="showImageModal.set(false)"
+      >
+        ✕
+      </button>
+      <img [src]="zoomedImage()" alt="صورة مكبّرة" class="zoom-img" />
+    </div>
+  </div>
+}

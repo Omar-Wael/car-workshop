@@ -1,1 +1,595 @@
-<p>invoices works!</p>
+<div class="invoice-container" id="invoiceFormTop" dir="rtl">
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- ══ Stats strip ══ -->
+  <div class="stats-strip">
+    <div class="stat-pill">
+      <span class="stat-icon">📄</span>
+      <span class="stat-label">الإجمالي</span>
+      <span class="stat-value">{{ totalCount() }}</span>
+    </div>
+    <div class="stat-pill stat-pending">
+      <span class="stat-icon">⏳</span>
+      <span class="stat-label">قيد المعالجة</span>
+      <span class="stat-value">{{ pendingCount() }}</span>
+    </div>
+    <div class="stat-pill stat-settled">
+      <span class="stat-icon">✅</span>
+      <span class="stat-label">مسددة</span>
+      <span class="stat-value">{{ settledCount() }}</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════ FORM CARD ════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل الفاتورة" : "➕ إضافة فاتورة جديدة" }}</h2>
+      @if (isEditing) {
+        <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+          ✖ إلغاء
+        </button>
+      }
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <!-- ── قسم السلفة ── -->
+      <div class="section-title">💰 بيانات السلفة</div>
+      <div class="form-grid" style="padding: 0 1.25rem">
+        <div class="form-group">
+          <label>رقم الفاتورة <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="invoice_number"
+            [class.invalid]="
+              form.get('invoice_number')?.invalid &&
+              form.get('invoice_number')?.touched
+            "
+            placeholder="مثال: INV-2024-001"
+          />
+          @if (
+            form.get("invoice_number")?.invalid &&
+            form.get("invoice_number")?.touched
+          ) {
+            <span class="error-msg">رقم الفاتورة مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>مبلغ السلفة (جنيه) <span class="required">*</span></label>
+          <input
+            type="number"
+            formControlName="advance_amount"
+            min="0"
+            step="0.01"
+            [class.invalid]="
+              form.get('advance_amount')?.invalid &&
+              form.get('advance_amount')?.touched
+            "
+            placeholder="0.00"
+          />
+          @if (
+            form.get("advance_amount")?.invalid &&
+            form.get("advance_amount")?.touched
+          ) {
+            <span class="error-msg">مبلغ السلفة مطلوب</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ السلفة</label>
+          <input type="date" formControlName="advance_date" />
+        </div>
+
+        <div class="form-group">
+          <label>المستلم</label>
+          <input
+            type="text"
+            formControlName="advance_recipient"
+            placeholder="اسم المستلم"
+          />
+        </div>
+
+        <div class="form-group full-width">
+          <label>غرض السلفة</label>
+          <textarea
+            formControlName="advance_purpose"
+            rows="2"
+            placeholder="صف الغرض من السلفة..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- ── قسم السيارات ── -->
+      <div class="section-title">
+        🚗 السيارات المرتبطة
+        <button
+          type="button"
+          class="btn btn-add-vehicle btn-sm"
+          (click)="addVehicle()"
+        >
+          ➕ إضافة سيارة
+        </button>
+      </div>
+
+      <div class="vehicles-list" formArrayName="vehicles">
+        @for (
+          ctrl of vehiclesArray.controls;
+          track trackByIndex($index);
+          let vi = $index
+        ) {
+          <div class="vehicle-item" [formGroupName]="vi">
+            <div class="vehicle-item-header">
+              <span class="vehicle-item-num">🚗 سيارة {{ vi + 1 }}</span>
+              @if (vehiclesArray.length > 1) {
+                <button
+                  type="button"
+                  class="btn btn-danger btn-xs"
+                  (click)="removeVehicle(vi)"
+                >
+                  🗑️ حذف
+                </button>
+              }
+            </div>
+            <div class="form-grid vehicle-grid">
+              <div class="form-group">
+                <label>رقم اللوحة <span class="required">*</span></label>
+                <app-searchable-select
+                  formControlName="vehicle_plate"
+                  [options]="vehicleOptions()"
+                  placeholder="اختر السيارة"
+                  [invalid]="
+                    !!(
+                      vehicleAt(vi).get('vehicle_plate')?.invalid &&
+                      vehicleAt(vi).get('vehicle_plate')?.touched
+                    )
+                  "
+                />
+              </div>
+              <div class="form-group">
+                <label
+                  >تكلفة الأعمال (جنيه) <span class="required">*</span></label
+                >
+                <input
+                  type="number"
+                  formControlName="cost"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  [class.invalid]="
+                    vehicleAt(vi).get('cost')?.invalid &&
+                    vehicleAt(vi).get('cost')?.touched
+                  "
+                />
+              </div>
+              <div class="form-group full-width">
+                <label>وصف الأعمال</label>
+                <textarea
+                  formControlName="description"
+                  rows="2"
+                  placeholder="صيانة دورية، تغيير قطع..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="vehicles-total">
+        💰 إجمالي تكلفة السيارات:
+        <strong>{{ getVehiclesTotalFromForm() | number: "1.2-2" }} جنيه</strong>
+      </div>
+
+      <!-- ── قسم الفاتورة والسداد ── -->
+      <div class="section-title">🧾 الفاتورة والسداد</div>
+      <div class="form-grid" style="padding: 0 1.25rem">
+        <div class="form-group">
+          <label>تاريخ استلام الفاتورة</label>
+          <input type="date" formControlName="invoice_received_date" />
+        </div>
+
+        <div class="form-group">
+          <label>مبلغ الفاتورة (جنيه)</label>
+          <input
+            type="number"
+            formControlName="invoice_amount"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>تاريخ السداد</label>
+          <input type="date" formControlName="settlement_date" />
+        </div>
+
+        <div class="form-group">
+          <label>مبلغ السداد (جنيه)</label>
+          <input
+            type="number"
+            formControlName="settlement_amount"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>الحالة <span class="required">*</span></label>
+          <app-searchable-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="اختر الحالة"
+          />
+        </div>
+      </div>
+
+      <!-- ── قسم الربط ── -->
+      <div class="section-title">🔗 الربط بسجل آخر (اختياري)</div>
+      <div class="form-grid" style="padding: 0 1.25rem">
+        <div class="form-group">
+          <label>نوع الربط</label>
+          <app-searchable-select
+            formControlName="related_type"
+            [options]="typeOptions"
+            placeholder="— بدون ربط —"
+            (selectionChange)="onRelatedTypeChange($any($event))"
+          />
+        </div>
+
+        @if (
+          form.get("related_type")?.value &&
+          form.get("related_type")?.value !== "other"
+        ) {
+          <div class="form-group">
+            <label>المرجع</label>
+            <app-searchable-select
+              formControlName="related_reference"
+              [options]="referenceOptions()"
+              placeholder="اختر المرجع"
+              searchPlaceholder="ابحث..."
+            />
+          </div>
+        }
+
+        <div class="form-group full-width">
+          <label>ملاحظات</label>
+          <textarea
+            formControlName="notes"
+            rows="2"
+            placeholder="اختياري..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- ── المرفقات ── -->
+      <div class="section-title">📸 صور الفاتورة</div>
+      <div class="attachments-section">
+        <label class="file-upload-btn">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            (change)="onFileSelect($event)"
+            hidden
+          />
+          📁 إضافة صور
+        </label>
+        @if (currentAttachments.length) {
+          <div class="attachments-grid">
+            @for (
+              att of currentAttachments;
+              track trackByIndex($index);
+              let ai = $index
+            ) {
+              <div class="attachment-thumb">
+                <img
+                  [src]="att.data"
+                  [alt]="att.name"
+                  (click)="openZoom(att.data)"
+                />
+                <div class="attachment-name">{{ att.name }}</div>
+                <button
+                  type="button"
+                  class="attachment-remove"
+                  (click)="removeAttachment(ai)"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="no-attachments">لا توجد صور مرفقة</p>
+        }
+      </div>
+
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳ جارٍ الحفظ...
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ الفاتورة
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════════════════════ TABLE CARD ════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        سجلات الفواتير
+        <span class="count-badge">{{ filteredInvoices().length }}</span>
+      </h2>
+      <button class="btn btn-excel btn-sm" (click)="exportToExcel()">
+        📥 تصدير Excel
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-grid">
+      <div class="filter-search">
+        <input
+          type="text"
+          placeholder="🔍 رقم الفاتورة..."
+          [value]="filterNumber()"
+          (input)="filterNumber.set($any($event.target).value)"
+        />
+      </div>
+      <app-searchable-select
+        [options]="platesInData()"
+        [value]="filterPlate()"
+        placeholder="كل السيارات"
+        (selectionChange)="filterPlate.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="statusOptions"
+        [value]="filterStatus()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterStatus.set($any($event))"
+      />
+      <app-searchable-select
+        [options]="typeOptions"
+        [value]="filterType()"
+        placeholder="كل الأنواع"
+        (selectionChange)="filterType.set($any($event))"
+      />
+      <div class="date-filter">
+        <label>من</label>
+        <input
+          type="date"
+          [value]="filterFrom()"
+          (change)="filterFrom.set($any($event.target).value)"
+        />
+      </div>
+      <div class="date-filter">
+        <label>إلى</label>
+        <input
+          type="date"
+          [value]="filterTo()"
+          (change)="filterTo.set($any($event.target).value)"
+        />
+      </div>
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح
+      </button>
+    </div>
+
+    <app-data-table
+      [data]="filteredInvoices()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="📄"
+      emptyTitle="لا توجد فواتير"
+      emptySubtitle="أضف فاتورة جديدة باستخدام النموذج أعلاه"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+<!-- ════════════════════ DETAILS MODAL ════════════════════ -->
+@if (showDetailsModal() && selectedInvoice()) {
+  @let inv = selectedInvoice()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>📄 تفاصيل الفاتورة — {{ inv.invoice_number }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid-2">
+          <!-- السلفة -->
+          <div class="detail-section">
+            <h3>💰 معلومات السلفة</h3>
+            <div class="detail-row">
+              <span>رقم الفاتورة</span><strong>{{ inv.invoice_number }}</strong>
+            </div>
+            <div class="detail-row">
+              <span>مبلغ السلفة</span>
+              <strong>{{ inv.advance_amount | number: "1.2-2" }} ج</strong>
+            </div>
+            @if (inv.advance_date) {
+              <div class="detail-row">
+                <span>تاريخ السلفة</span>
+                <strong>{{ inv.advance_date | date: "yyyy/MM/dd" }}</strong>
+              </div>
+            }
+            @if (inv.advance_purpose) {
+              <div class="detail-row">
+                <span>الغرض</span
+                ><span class="detail-text">{{ inv.advance_purpose }}</span>
+              </div>
+            }
+            @if (inv.advance_recipient) {
+              <div class="detail-row">
+                <span>المستلم</span><strong>{{ inv.advance_recipient }}</strong>
+              </div>
+            }
+          </div>
+
+          <!-- الفاتورة والسداد -->
+          <div class="detail-section">
+            <h3>🧾 الفاتورة والسداد</h3>
+            <div class="detail-row">
+              <span>الحالة</span>
+              <span class="badge" [class]="svc.statusBadgeClass(inv.status)">{{
+                svc.statusLabel(inv.status)
+              }}</span>
+            </div>
+            @if (inv.invoice_received_date) {
+              <div class="detail-row">
+                <span>تاريخ الاستلام</span>
+                <strong>{{
+                  inv.invoice_received_date | date: "yyyy/MM/dd"
+                }}</strong>
+              </div>
+            }
+            @if (inv.invoice_amount) {
+              <div class="detail-row">
+                <span>مبلغ الفاتورة</span>
+                <strong>{{ inv.invoice_amount | number: "1.2-2" }} ج</strong>
+              </div>
+            }
+            @if (inv.settlement_date) {
+              <div class="detail-row">
+                <span>تاريخ السداد</span>
+                <strong>{{ inv.settlement_date | date: "yyyy/MM/dd" }}</strong>
+              </div>
+            }
+            @if (inv.settlement_amount) {
+              <div class="detail-row">
+                <span>مبلغ السداد</span>
+                <strong>{{ inv.settlement_amount | number: "1.2-2" }} ج</strong>
+              </div>
+            }
+            @if (inv.difference_amount != null) {
+              <div class="detail-row">
+                <span>الفرق</span>
+                <span [innerHTML]="renderDiff(inv.difference_amount)"></span>
+              </div>
+            }
+          </div>
+
+          <!-- السيارات -->
+          <div class="detail-section full-width">
+            <h3>🚗 السيارات المرتبطة ({{ (inv.vehicles || []).length }})</h3>
+            @if ((inv.vehicles || []).length) {
+              <div class="vehicles-detail-list">
+                @for (v of inv.vehicles; track trackByIndex($index)) {
+                  <div class="vehicle-detail-card">
+                    <div class="vehicle-detail-header">
+                      <strong>🚗 {{ v.vehicle_plate }}</strong>
+                      <span class="vehicle-cost-badge"
+                        >{{ v.cost | number: "1.2-2" }} ج</span
+                      >
+                    </div>
+                    @if (v.description) {
+                      <p class="vehicle-desc">{{ v.description }}</p>
+                    }
+                  </div>
+                }
+                <div class="vehicles-total-row">
+                  💰 الإجمالي:
+                  <strong
+                    >{{
+                      svc.calcTotalVehiclesCost(inv.vehicles) | number: "1.2-2"
+                    }}
+                    ج</strong
+                  >
+                </div>
+              </div>
+            } @else {
+              <span class="muted">لا توجد سيارات مرتبطة</span>
+            }
+          </div>
+
+          <!-- الربط -->
+          @if (inv.related_type) {
+            <div class="detail-section">
+              <h3>🔗 الربط</h3>
+              <div class="detail-row">
+                <span>النوع</span>
+                <strong>{{ svc.typeLabel(inv.related_type) }}</strong>
+              </div>
+              @if (inv.related_reference) {
+                <div class="detail-row">
+                  <span>المرجع</span>
+                  <strong>{{ inv.related_reference }}</strong>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ملاحظات -->
+          @if (inv.notes) {
+            <div class="detail-section" [class.full-width]="!inv.related_type">
+              <h3>📝 ملاحظات</h3>
+              <p class="notes-text">{{ inv.notes }}</p>
+            </div>
+          }
+
+          <!-- الصور -->
+          @if (inv.attachments?.length) {
+            <div class="detail-section full-width">
+              <h3>📸 صور الفاتورة ({{ inv.attachments!.length }})</h3>
+              <div class="attachments-grid modal-attachments">
+                @for (img of inv.attachments; track trackByIndex($index)) {
+                  @if (img.data?.startsWith("data:image")) {
+                    <div class="attachment-thumb" (click)="openZoom(img.data)">
+                      <img [src]="img.data" [alt]="img.name" />
+                      <div class="attachment-name">{{ img.name }}</div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(inv.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ Image zoom ══ -->
+@if (showImageModal()) {
+  <div
+    class="modal-backdrop modal-backdrop-dark"
+    (click)="showImageModal.set(false)"
+  >
+    <div class="zoom-modal" (click)="$event.stopPropagation()">
+      <button
+        class="modal-close zoom-close"
+        (click)="showImageModal.set(false)"
+      >
+        ✕
+      </button>
+      <img [src]="zoomedImage()" alt="صورة" class="zoom-img" />
+    </div>
+  </div>
+}

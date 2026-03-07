@@ -16,6 +16,7 @@ import {
   ActionEvent,
   SortState,
 } from "src/app/core/models";
+import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 
 @Component({
   selector: "app-data-table",
@@ -46,6 +47,8 @@ export class DataTableComponent implements OnChanges {
   pageSize = signal(10);
   currentPage = signal(1);
   sort = signal<SortState | null>(null);
+
+  constructor(private sanitizer: DomSanitizer) {}
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes["defaultPageSize"]) {
@@ -176,8 +179,12 @@ export class DataTableComponent implements OnChanges {
     return val === null || val === undefined || val === "" ? "—" : String(val);
   }
 
-  getCellHtml(row: any, col: TableColumn): string {
-    return col.renderHtml ? col.renderHtml(row) : "";
+  // getCellHtml(row: any, col: TableColumn): string {
+  //   return col.renderHtml ? col.renderHtml(row) : "";
+  // }
+  getCellHtml(row: any, col: TableColumn): SafeHtml {
+    const html = col.renderHtml ? col.renderHtml(row) : "";
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   getCellClass(row: any, col: TableColumn): string {

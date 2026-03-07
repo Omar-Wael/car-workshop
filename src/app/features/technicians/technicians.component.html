@@ -1,1 +1,342 @@
-<p>technicians works!</p>
+<div class="ref-container" id="techFormTop" dir="rtl">
+  @if (toast()) {
+    <div class="toast" [class]="'toast toast-' + toast()!.type">
+      {{ toast()!.message }}
+    </div>
+  }
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-pill">
+      <span class="stat-icon">👨‍🔧</span>
+      <span class="stat-label">إجمالي الفنيين</span>
+      <span class="stat-value">{{ totalCount() }}</span>
+    </div>
+    <div class="stat-pill stat-active">
+      <span class="stat-icon">✅</span>
+      <span class="stat-label">نشطون</span>
+      <span class="stat-value">{{ activeCount() }}</span>
+    </div>
+  </div>
+
+  <!-- ════ FORM ════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ isEditing ? "✏️ تعديل بيانات فني" : "➕ إضافة فني جديد" }}</h2>
+      <div class="header-actions">
+        <button class="btn btn-excel btn-sm" (click)="svc.exportToExcel()">
+          📥 Excel
+        </button>
+        @if (isEditing) {
+          <button class="btn btn-ghost btn-sm" (click)="resetForm()">
+            ✖ إلغاء
+          </button>
+        }
+      </div>
+    </div>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="section-title">👤 البيانات الأساسية</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>الاسم الكامل <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="full_name"
+            [class.invalid]="
+              form.get('full_name')?.invalid && form.get('full_name')?.touched
+            "
+            placeholder="اسم الفني"
+          />
+          @if (
+            form.get("full_name")?.invalid && form.get("full_name")?.touched
+          ) {
+            <span class="error-msg">الاسم مطلوب</span>
+          }
+        </div>
+        <div class="form-group">
+          <label>رقم الموظف</label>
+          <input
+            type="text"
+            formControlName="employee_number"
+            placeholder="مثال: EMP-001"
+          />
+        </div>
+        <div class="form-group">
+          <label>الرقم القومي</label>
+          <input
+            type="text"
+            formControlName="national_id"
+            placeholder="14 رقم"
+          />
+        </div>
+        <div class="form-group">
+          <label>الهاتف</label>
+          <input type="tel" formControlName="phone" placeholder="01xxxxxxxxx" />
+        </div>
+        <div class="form-group">
+          <label>البريد الإلكتروني</label>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="email@example.com"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">🔧 بيانات الوظيفة</div>
+      <div class="form-grid padded">
+        <div class="form-group">
+          <label>المنصب / الوظيفة</label>
+          <input
+            type="text"
+            formControlName="position"
+            placeholder="مثال: فني محركات"
+          />
+        </div>
+        <div class="form-group">
+          <label>مستوى المهارة</label>
+          <app-searchable-select
+            formControlName="skill_level"
+            [options]="skillOptions"
+            placeholder="اختر المستوى"
+          />
+        </div>
+        <div class="form-group">
+          <label>القسم / الإدارة</label>
+          <app-searchable-select
+            formControlName="department"
+            [options]="departmentOptions()"
+            placeholder="اختر القسم"
+          />
+        </div>
+        <div class="form-group">
+          <label>الحالة الوظيفية</label>
+          <app-searchable-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="الحالة"
+          />
+        </div>
+        <div class="form-group">
+          <label>تاريخ التعيين</label>
+          <input type="date" formControlName="hire_date" />
+        </div>
+        <div class="form-group">
+          <label>التقييم (1-5)</label>
+          <input
+            type="number"
+            formControlName="performance_rating"
+            min="1"
+            max="5"
+            step="0.5"
+          />
+        </div>
+      </div>
+
+      <div class="section-title">🎯 التخصصات</div>
+      <div class="specializations-grid padded">
+        @for (spec of specializationOptions; track spec) {
+          <label
+            class="spec-chip"
+            [class.selected]="hasSpecialization(spec)"
+            (click)="toggleSpecialization(spec)"
+          >
+            {{ spec }}
+          </label>
+        }
+      </div>
+
+      <div class="section-title">📝 ملاحظات</div>
+      <div class="padded">
+        <textarea
+          formControlName="notes"
+          rows="2"
+          style="width: 100%; box-sizing: border-box"
+          placeholder="اختياري..."
+        ></textarea>
+      </div>
+
+      <div class="btn-group">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            ⏳
+          } @else if (isEditing) {
+            ✅ حفظ التعديلات
+          } @else {
+            💾 حفظ الفني
+          }
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">
+          🔄 مسح
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════ TABLE ════ -->
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        الفنيون <span class="count-badge">{{ filteredTechs().length }}</span>
+      </h2>
+    </div>
+    <div class="filters-bar">
+      <input
+        type="text"
+        placeholder="🔍 بحث بالاسم أو رقم الموظف..."
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+        class="search-input"
+      />
+      <app-searchable-select
+        [options]="statusOptions"
+        [value]="filterStatus()"
+        placeholder="كل الحالات"
+        (selectionChange)="filterStatus.set($any($event))"
+        style="min-width: 140px"
+      />
+      <app-searchable-select
+        [options]="skillOptions"
+        [value]="filterLevel()"
+        placeholder="كل المستويات"
+        (selectionChange)="filterLevel.set($any($event))"
+        style="min-width: 140px"
+      />
+      <button class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        🔄 مسح
+      </button>
+    </div>
+    <app-data-table
+      [data]="filteredTechs()"
+      [columns]="tableColumns"
+      [actions]="tableActions"
+      [loading]="loading()"
+      [defaultPageSize]="10"
+      emptyIcon="👨‍🔧"
+      emptyTitle="لا يوجد فنيون"
+      (actionClick)="onTableAction($event)"
+    />
+  </div>
+</div>
+
+@if (showDetailsModal() && selectedTech()) {
+  @let t = selectedTech()!;
+  <div class="modal-backdrop" (click)="showDetailsModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>👨‍🔧 {{ t.full_name }}</h2>
+        <button class="modal-close" (click)="showDetailsModal.set(false)">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid-2">
+          <div class="detail-section">
+            <h3>👤 البيانات</h3>
+            @if (t.employee_number) {
+              <div class="spec-row">
+                <span>رقم الموظف</span><code>{{ t.employee_number }}</code>
+              </div>
+            }
+            @if (t.position) {
+              <div class="spec-row">
+                <span>المنصب</span><strong>{{ t.position }}</strong>
+              </div>
+            }
+            @if (t.department) {
+              <div class="spec-row">
+                <span>القسم</span><span>{{ t.department }}</span>
+              </div>
+            }
+            @if (t.hire_date) {
+              <div class="spec-row">
+                <span>تاريخ التعيين</span
+                ><span>{{ t.hire_date | date: "yyyy/MM/dd" }}</span>
+              </div>
+            }
+            <div class="spec-row">
+              <span>الحالة</span>
+              <span
+                class="badge"
+                [class]="
+                  t.status === 'active' ? 'badge-success' : 'badge-secondary'
+                "
+                >{{ svc.statusLabel(t.status || "active") }}</span
+              >
+            </div>
+          </div>
+          <div class="detail-section">
+            <h3>📊 الأداء</h3>
+            @if (t.skill_level) {
+              <div class="spec-row">
+                <span>المستوى</span>
+                <span
+                  class="badge"
+                  [class]="svc.skillBadgeClass(t.skill_level)"
+                  >{{ t.skill_level }}</span
+                >
+              </div>
+            }
+            <div class="spec-row">
+              <span>التقييم</span
+              ><strong
+                >{{ svc.renderStars(t.performance_rating) }}
+                {{ (t.performance_rating || 0).toFixed(1) }}</strong
+              >
+            </div>
+            <div class="spec-row">
+              <span>إجمالي الأعمال</span
+              ><strong>{{ t.total_jobs || 0 }}</strong>
+            </div>
+            <div class="spec-row">
+              <span>مكتملة</span
+              ><strong style="color: #10b981">{{
+                t.completed_jobs || 0
+              }}</strong>
+            </div>
+            <div class="spec-row">
+              <span>جارية</span
+              ><strong style="color: #f59e0b">{{ t.pending_jobs || 0 }}</strong>
+            </div>
+          </div>
+          @if (t.specializations?.length) {
+            <div class="detail-section full-width">
+              <h3>🎯 التخصصات</h3>
+              <div class="spec-chips">
+                @for (s of t.specializations; track s) {
+                  <span class="spec-chip selected">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (t.notes) {
+            <div class="detail-section full-width">
+              <h3>📝 ملاحظات</h3>
+              <p
+                style="
+                  white-space: pre-line;
+                  margin: 0;
+                  font-size: 0.88rem;
+                  color: #374151;
+                "
+              >
+                {{ t.notes }}
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="btn btn-primary"
+          (click)="edit(t.id!); showDetailsModal.set(false)"
+        >
+          ✏️ تعديل
+        </button>
+        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+}
